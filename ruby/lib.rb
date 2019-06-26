@@ -79,4 +79,13 @@ class Client
       min_capacity
     )
   end
+
+  def getLiveCellByTxHashIndex(tx_hash, index)
+    out_point = CKB::Types::OutPoint.new(
+                        cell: CKB::Types::CellOutPoint.new(
+                        tx_hash: tx_hash,
+                        index: index
+                      ))
+    cell_with_status = api.get_live_cell(out_point)
+  end
 end

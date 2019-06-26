@@ -7,7 +7,7 @@ client = Client.new
 i = client.getLiveCellsByCapacity(capacity * 10 ** 8)
 
 json = {
-  getLiveCellsByCapacity_inputs: i.inputs.map(&:to_h),
-  getLiveCellsByCapacity_capacity: i.capacities.to_s,
+  inputs: i.inputs.map(&:to_h),
+  capacity: i.capacities.to_s,
 }
 puts json.to_json
