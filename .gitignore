@@ -1,0 +1,5 @@
+.ghc*
+.idea/
+dist-newstyle/
+dist/
+ruby/privkey
