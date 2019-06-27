@@ -22,7 +22,7 @@ data Operator next =
     GetLiveCellsByCapacity Int (RetGetLiveCellsByCapacity -> next)
   | GetLiveCellByTxHashIndex (Hash, Index) (CellWithStatus -> next)
 --  | GetLiveCellByTxIndex (Transaction, Int) ([Input] -> next)
---  | DeployContract (Path, Lock) (([Output], ContractInfo) -> next)
+  | DeployContract Path (ContractInfo -> next)
 --  | Lock (ContractInfo, [Arg], Maybe Capacity, Maybe Data) ([Output] -> next)
 --  | Process ([Input], [Arg], Maybe Capacity, Maybe Data, Maybe Lock) ([Output] -> next)
 --  | ResolveDeps [Input] ([Dep] -> next)
@@ -56,6 +56,11 @@ test2 = do
   let args = (cell_outpoint_tx_hash c, cell_outpoint_index c)
   getLiveCellByTxHashIndex args
 
+test3 :: Dapp ContractInfo
+test3 = do
+  path <- ask "contract path"
+  deployContract path
+
 
 -- util functions for client interpreter
 aeson_decode :: FromJSON a => String -> Maybe a
@@ -87,9 +92,13 @@ clientInterpreter (GetLiveCellByTxHashIndex args next) = do
   let (hash, index) = args
   ret <- call_ruby "getLiveCellByTxHashIndex" [hash, index]
   next ret
+clientInterpreter (DeployContract path next) = do
+  ret <- call_ruby "deployContract" [path]
+  next ret
 clientInterpreter (Ask prompt next) = do
   liftIO $ putStrLn prompt
   something <- liftIO $ getLine
   next something
 
-runTest = runMaybeT (iterM clientInterpreter $ test2)
+runTest2 = runMaybeT (iterM clientInterpreter $ test2)
+runTest3 = runMaybeT (iterM clientInterpreter $ test3)
