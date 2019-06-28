@@ -63,10 +63,45 @@ DSL使用Haskell实现，在这方面Haskell具有不可替代的优势。
 # Operator 列表
 
 ```haskell
+-- define of DSL
 data Operator next =
-    SendTx String next
-  | BuildTx String (String -> next)
-  | GatherTx Int (String -> next)
-  | Input (String -> next)
+    GetLiveCellsByCapacity Int (RetGetLiveCellsByCapacity -> next)
+  | GetLiveCellByTxHashIndex (Hash, Index) (CellWithStatus -> next)
+  | DeployContract Path (ContractInfo -> next)
+--  | Sign Transaction ([Witness] -> next)
+  | SystemScriptDep (Dep -> next)
+  | SendTransaction Transaction (Hash -> next)
+  | SendRawTransaction Transaction (Hash -> next)
+  | Ask String (String -> next)
+  | MyLock (Script -> next)
+  deriving (Functor)
+```
+
+# 示例
+
+如下示例，跟 [ckb contract example](https://github.com/rink1969/ckb-contract-examples)里面第一个例子是一样的。
+
+```haskell
+cabal new-repl
+*Type> :m EDSL
+*Type EDSL> runDeploy 
+contract path
+<<<user input>>> /home/rink/work/github/edsl/contract/build/always_success
+{"name":"always_success","elf_path":"/home/rink/work/github/edsl/contract/build/always_success","code_hash":"0x4b3af1e8eb9e2c9e55b925769821dc6eaf61d5ade7f2fe96616b006efc8f4cc3","tx_hash":"0x01bb87271ed03e99f0cf5bb549e7703cceaf6fd6659aa61036af0a4d0f1fbd3f","index":"0"}
+Just (ContractInfo {contract_info_name = "always_success", contract_info_elf_path = "/home/rink/work/github/edsl/contract/build/always_success", contract_info_code_hash = "0x4b3af1e8eb9e2c9e55b925769821dc6eaf61d5ade7f2fe96616b006efc8f4cc3", contract_info_tx_hash = "0x01bb87271ed03e99f0cf5bb549e7703cceaf6fd6659aa61036af0a4d0f1fbd3f", contract_info_index = "0"})
+*Type EDSL> let Just info = it
+*Type EDSL> runSetup info 
+input capacity
+<<<user input>>> 100000000000
+{"inputs":[{"previous_output":{"block_hash":"0x6c0a0ae9e4c74cd422539b8a5803e5dacfbf911823a1b2d7688c41be0b94fdd9","cell":{"tx_hash":"0x111223d17dd3ece22418fa7095e26a51597e328eed2395ba3f0a387677aabb0d","index":"0"}},"since":"0"}],"capacity":"100000000000"}
+{"code_hash":"0xf1951123466e4479842387a66fabfd6b65fc87fd84ae8e6cd3053edb27fff2fd","args":["0x4a88cef22e4e71c48c40da51c1d6bd16daa97aa7"]}
+{"block_hash":null,"cell":{"tx_hash":"0x3f09b95f8886723cc850db0beb9c153169151c663f3e8f832dc04421fbb1f382","index":"1"}}
+"0xe68ea6cd109dd06e12801096f89da7cf2cce04efe362f883c8df84702058749f"
+Just "0xe68ea6cd109dd06e12801096f89da7cf2cce04efe362f883c8df84702058749f"
+*Type EDSL> let Just prehash = it
+*Type EDSL> runCall info prehash 
+{"cell":{"capacity":"100000000000","lock":{"code_hash":"0x4b3af1e8eb9e2c9e55b925769821dc6eaf61d5ade7f2fe96616b006efc8f4cc3","args":["0x4a88cef22e4e71c48c40da51c1d6bd16daa97aa7"]},"type":null,"data":"0x"},"status":"live"}
+"0x3711e9daab07ddea052673f7f7bcfe96bdfed9826e562b54a3bed33c5a863d74"
+Just "0x3711e9daab07ddea052673f7f7bcfe96bdfed9826e562b54a3bed33c5a863d74"
 ```
 

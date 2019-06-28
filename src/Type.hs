@@ -14,6 +14,7 @@ type PrivateKey = String
 type Index = String
 type Since = String
 type Status = String
+type Version = String
 
 data ContractInfo = ContractInfo
   { contract_info_name :: Name
@@ -120,10 +121,11 @@ type Dep = OutPoint
 
 data Transaction = Transaction
   { transaction_hash :: Hash
-  , transaction_version :: Int
+  , transaction_version :: Version
   , transaction_deps :: [Dep]
   , transaction_inputs :: [Input]
   , transaction_outputs :: [Output]
+  , transaction_witnesses :: [Witness]
   } deriving (Generic, Show)
 
 instance ToJSON Transaction where
@@ -135,19 +137,22 @@ instance FromJSON Transaction where
                 fieldLabelModifier = drop $ length "transaction_" }
 
 
-data TransactionWithWitnesses = TransactionWithWitnesses
-  { transaction_with_witnesses_tx :: Transaction
-  , transaction_with_witnesses_witnesses :: [Witness]
-  } deriving (Generic, Show)
+-- util function
+fake_witness :: Int -> [Witness]
+fake_witness n = take n $ repeat $ Witness []
 
-instance ToJSON TransactionWithWitnesses where
-  toJSON = genericToJSON defaultOptions {
-             fieldLabelModifier = drop $ length "transaction_with_witnesses_" }
+mkInput :: Hash -> Index -> Since -> Input
+mkInput hash index since = let
+  cell_outpoint = CellOutPoint hash index
+  outpoint = OutPoint Nothing (Just cell_outpoint)
+  in Input outpoint since
 
-instance FromJSON TransactionWithWitnesses where
-  parseJSON = genericParseJSON defaultOptions {
-                fieldLabelModifier = drop $ length "transaction_with_witnesses_" }
-
+mkDepFormContract :: ContractInfo -> Dep
+mkDepFormContract info = let
+  hash = contract_info_tx_hash info
+  index = contract_info_index info
+  cell_outpoint = CellOutPoint hash index
+  in OutPoint Nothing (Just cell_outpoint)
 
 -- for operations
 data RetGetLiveCellsByCapacity = RetGetLiveCellsByCapacity

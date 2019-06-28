@@ -79,11 +79,6 @@ class Client
     witnesses
   end
 
-  # @param transaction [CKB::Transaction]
-  def send_transaction(transaction)
-    api.send_transaction(transaction)
-  end
-
   # for Operators
 
   def getLiveCellsByCapacity(capacity)
@@ -143,7 +138,7 @@ class Client
     tx_hash = api.compute_transaction_hash(tx)
 
     tx = tx.sign(key, tx_hash)
-    send_transaction(tx)
+    send_raw_transaction(tx)
 
     # wait for tx committed
     count = 0
@@ -162,6 +157,24 @@ class Client
                               }
       end
     end
-
   end
+
+  # send transaction which signed
+  # @param transaction [CKB::Transaction]
+  def send_raw_transaction(transaction)
+    api.send_transaction(transaction)
+  end
+
+  # send transaction which unsigned
+  # @param transaction [CKB::Transaction]
+  def send_transaction(tx)
+    tx_hash = api.compute_transaction_hash(tx)
+    tx = tx.sign(key, tx_hash)
+    send_raw_transaction(tx)
+  end
+
+  def system_script_dep
+    api.system_script_out_point
+  end
+
 end
