@@ -8,6 +8,6 @@ tx_s = File.read(tx_path).strip
 tx_json = JSON.parse(tx_s, symbolize_names: true)
 tx = CKB::Types::Transaction.from_h(tx_json)
 client = Client.new(privkey)
-tx_hash = client.send_transaction(tx)
+stx = client.sign_transaction(tx)
 
-puts tx_hash.to_json
+puts stx.witnesses.map(&:to_h).to_json

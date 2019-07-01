@@ -65,6 +65,7 @@ library
                      , aeson == 1.4.3.0
                      , transformers
                      , directory
+                     , lens
 
   -- Directories containing source files.
   hs-source-dirs:      src

@@ -28,54 +28,80 @@ DSL使用Haskell实现，在这方面Haskell具有不可替代的优势。
 
 # Operators
 
-按照第一部分的描述，这里可以分成几个部分。
+通过总结之前写合约的经验，以及反复调整，目前Operators列表如下。
 
-### cell查询
-
-从live cell集合中选择合适的cell出来，返回结果是inputs数组。会有如下不同的情况：
-
-1. 为了得到指定数量的capacity。过滤条件是lockhash（保证我能花）和capacity总量（大于等于指定的数量，大于的时候后面要生成找零的output）。可能还有些反向的过滤条件，需要跳过一些live cell，比如已经被还未上链的交易挑中的live cell。后端实现可以直接用SDK实现好相应的函数。
-2. 寻找指定的live cell。过滤条件是相关的tx hash和index。后端实现可以是封装好的函数。
-3. 某个构造好但是尚未上链的交易的output cell。需要交易结构变量和对应的index。后端实现可以是封装好的函数。
-
-很多情况下过滤条件来自要构造的output，所以其实代码流程是先去构造output（主要是capacity，data和args，暂时先不考虑type），然后根据需要提取出过滤条件，再来筛选live cell。
-
-### 业务逻辑
-
-根据inputs里的内容，以及额外的参数，构造出outputs。有如下不同情况：
-
-1. 部署合约的时候，参数是ELF文件的内容。output的data是ELF的二进制内容；capaticy根据data长度计算得到（同时也是查询条件）；lock一般使用钱包的lock（即code hash是system script，args是私钥对应的blake160）
-2. setup/vote/lock是一类操作，主要是将已经部署好的合约作为lock加到一个cell上面。再配以其他参数，用户指定的lock args，setup会有用户指定的capacity，vote会有用户指定的data。
-3. 唱票，根据inputs的data生成output的data。
-4. call，改票，exit和unlock操作。output直接复制input的内容，中间可能有些处理。改票是改data，exit是改lock，unlock是改data和lock。有些是从未上链的交易开始构造的。
-
-### 签名逻辑
-
-使用私钥对交易进行签名，或者对签好的witness进行操作。
-
-1. 简单的签名略过。
-2. witness的操作主要是为了多签，合并多个人签出来的witnesses。
-
-### 其他
-
-比如询问用户输入，初始化钱包，发送交易。
-
-# Operator 列表
+主要考虑是隔离SDK和DSL，尽量使得DSL写的程序不涉及太多链的实现细节。
 
 ```haskell
 -- define of DSL
 data Operator next =
-    GetLiveCellsByCapacity Int (RetGetLiveCellsByCapacity -> next)
+  GetUserInfo Key (UserInfo -> next)
+  | LockHash (Hash, [Arg]) (Hash -> next)
+  | QueryLiveCells (Hash, Int) (RetQueryLiveCells -> next)
   | GetLiveCellByTxHashIndex (Hash, Index) (CellWithStatus -> next)
-  | DeployContract Path (ContractInfo -> next)
---  | Sign Transaction ([Witness] -> next)
-  | SystemScriptDep (Dep -> next)
-  | SendTransaction Transaction (Hash -> next)
+  | DeployContract (UserInfo, Path) (ContractInfo -> next)
+  | Sign (UserInfo, Transaction) ([Witness] -> next)
+  | SystemScript (ContractInfo -> next)
+  | SendTransaction (UserInfo, Transaction) (Hash -> next)
   | SendRawTransaction Transaction (Hash -> next)
   | Ask String (String -> next)
-  | MyLock (Script -> next)
   deriving (Functor)
 ```
+
+# 合约
+
+受 [Balzac](https://blockchain.unica.it/balzac/docs/nutshell.html) 的启发，把lock script表示成一个函数。
+
+但是Cell Model相比Bitcoin的UTXO的模型有些扩展，多了code hash等概念。
+
+因此设计了 ContractInfo 来存放合约相关的信息。
+
+```Haskell
+data ContractInfo = ContractInfo
+  { contract_info_name :: Name
+  , contract_info_elf_path :: Path
+  , contract_info_code_hash :: Hash
+  , contract_info_tx_hash :: Hash
+  , contract_info_index :: Index
+  }
+```
+
+然后搭配一个函数来表示合约对应的 lock 逻辑，输入是未签名/未完成的交易，输出是可以直接上链的完成交易。
+
+比如always_success合约的lock函数表示如下：
+
+```Haskell
+always_success_lock :: Transaction -> Dapp Transaction
+always_success_lock tx = return tx
+```
+
+lock的逻辑可以组合。
+
+CKB相对Bitcoin的一个特点是，没有内置签名算法等密码学原语，因此验签名也作为部分lock逻辑组合进来。
+
+比如 system script的lock逻辑如下：
+
+```Haskell
+system_script_lock :: UserInfo -> Transaction -> Dapp Transaction
+system_script_lock user_info tx = do
+  witnesses <- sign (user_info, tx)
+  let stx = set transaction_witnesses witnesses tx
+  return stx
+```
+
+将来还会出现更复杂的lock逻辑。
+
+### 生成合约代码
+
+查询并挑选inputs的逻辑跟合约没有关系，合约的目的就是检查从inputs生成outputs和witnesses的正确性。
+
+如前所述，这部分都归结到lock逻辑中。
+
+因此可以根据合约的lock逻辑来生成对应的合约代码。
+
+前面提到合约的lock逻辑可以由多个小的函数组合而成。
+
+目前的设想是提供一些描述lock逻辑的函数和对应的合约代码片段。
 
 # 示例
 
@@ -85,23 +111,18 @@ data Operator next =
 cabal new-repl
 *Type> :m EDSL
 *Type EDSL> runDeploy 
-contract path
-<<<user input>>> /home/rink/work/github/edsl/contract/build/always_success
-{"name":"always_success","elf_path":"/home/rink/work/github/edsl/contract/build/always_success","code_hash":"0x4b3af1e8eb9e2c9e55b925769821dc6eaf61d5ade7f2fe96616b006efc8f4cc3","tx_hash":"0x01bb87271ed03e99f0cf5bb549e7703cceaf6fd6659aa61036af0a4d0f1fbd3f","index":"0"}
-Just (ContractInfo {contract_info_name = "always_success", contract_info_elf_path = "/home/rink/work/github/edsl/contract/build/always_success", contract_info_code_hash = "0x4b3af1e8eb9e2c9e55b925769821dc6eaf61d5ade7f2fe96616b006efc8f4cc3", contract_info_tx_hash = "0x01bb87271ed03e99f0cf5bb549e7703cceaf6fd6659aa61036af0a4d0f1fbd3f", contract_info_index = "0"})
+privkey
+<<<user input>>> 0x...
+Just (ContractInfo {contract_info_name = "always_success", contract_info_elf_path = "/home/rink/work/github/edsl/contract/build/always_success", contract_info_code_hash = "0x4b3af1e8eb9e2c9e55b925769821dc6eaf61d5ade7f2fe96616b006efc8f4cc3", contract_info_tx_hash = "0xfbfee3330b368275714b57c7ce1349e7f9f877e2286c8ad8cf73e1399512cdf7", contract_info_index = "0"})
 *Type EDSL> let Just info = it
-*Type EDSL> runSetup info 
+*Type EDSL> runSetup info
+privkey
+<<<user input>>> 0x...
 input capacity
 <<<user input>>> 100000000000
-{"inputs":[{"previous_output":{"block_hash":"0x6c0a0ae9e4c74cd422539b8a5803e5dacfbf911823a1b2d7688c41be0b94fdd9","cell":{"tx_hash":"0x111223d17dd3ece22418fa7095e26a51597e328eed2395ba3f0a387677aabb0d","index":"0"}},"since":"0"}],"capacity":"100000000000"}
-{"code_hash":"0xf1951123466e4479842387a66fabfd6b65fc87fd84ae8e6cd3053edb27fff2fd","args":["0x4a88cef22e4e71c48c40da51c1d6bd16daa97aa7"]}
-{"block_hash":null,"cell":{"tx_hash":"0x3f09b95f8886723cc850db0beb9c153169151c663f3e8f832dc04421fbb1f382","index":"1"}}
-"0xe68ea6cd109dd06e12801096f89da7cf2cce04efe362f883c8df84702058749f"
-Just "0xe68ea6cd109dd06e12801096f89da7cf2cce04efe362f883c8df84702058749f"
+Just "0xe5e918de0535c8b25a390e64c88168efa2fbd3539d55801f95e0fe45c5033abd"
 *Type EDSL> let Just prehash = it
 *Type EDSL> runCall info prehash 
-{"cell":{"capacity":"100000000000","lock":{"code_hash":"0x4b3af1e8eb9e2c9e55b925769821dc6eaf61d5ade7f2fe96616b006efc8f4cc3","args":["0x4a88cef22e4e71c48c40da51c1d6bd16daa97aa7"]},"type":null,"data":"0x"},"status":"live"}
-"0x3711e9daab07ddea052673f7f7bcfe96bdfed9826e562b54a3bed33c5a863d74"
-Just "0x3711e9daab07ddea052673f7f7bcfe96bdfed9826e562b54a3bed33c5a863d74"
+Just "0xabe95418f853f696aa7e5206600eb988f82e7ff91fbd40f55ae8b3d4893b1a6d"
 ```
 

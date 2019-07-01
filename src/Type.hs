@@ -1,8 +1,10 @@
 {-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
+{-# LANGUAGE TemplateHaskell, RankNTypes #-}
 module Type where
 
 import GHC.Generics (Generic)
 import Data.Aeson (FromJSON, ToJSON, fieldLabelModifier, parseJSON, toJSON, defaultOptions, genericParseJSON, genericToJSON)
+import Control.Lens (makeLenses)
 
 type Path = String
 type Hash = String
@@ -10,29 +12,14 @@ type Name = String
 type Capacity = String
 type Data = String
 type Arg = String
-type PrivateKey = String
+type Key = String
 type Index = String
 type Since = String
 type Status = String
 type Version = String
 
-data ContractInfo = ContractInfo
-  { contract_info_name :: Name
-  , contract_info_elf_path :: Path
-  , contract_info_code_hash :: Hash
-  , contract_info_tx_hash :: Hash
-  , contract_info_index :: Index
-  } deriving (Generic, Show)
 
-instance ToJSON ContractInfo where
-  toJSON = genericToJSON defaultOptions {
-             fieldLabelModifier = drop $ length "contract_info_" }
-
-instance FromJSON ContractInfo where
-  parseJSON = genericParseJSON defaultOptions {
-                fieldLabelModifier = drop $ length "contract_info_" }
-
-
+-- data type from ckb
 
 data CellOutPoint = CellOutPoint
   { cell_outpoint_tx_hash :: Hash
@@ -120,21 +107,81 @@ instance FromJSON Witness where
 type Dep = OutPoint
 
 data Transaction = Transaction
-  { transaction_hash :: Hash
-  , transaction_version :: Version
-  , transaction_deps :: [Dep]
-  , transaction_inputs :: [Input]
-  , transaction_outputs :: [Output]
-  , transaction_witnesses :: [Witness]
+  { _transaction_hash :: Hash
+  , _transaction_version :: Version
+  , _transaction_deps :: [Dep]
+  , _transaction_inputs :: [Input]
+  , _transaction_outputs :: [Output]
+  , _transaction_witnesses :: [Witness]
   } deriving (Generic, Show)
+
+makeLenses ''Transaction
 
 instance ToJSON Transaction where
   toJSON = genericToJSON defaultOptions {
-             fieldLabelModifier = drop $ length "transaction_" }
+             fieldLabelModifier = drop $ length "_transaction_" }
 
 instance FromJSON Transaction where
   parseJSON = genericParseJSON defaultOptions {
-                fieldLabelModifier = drop $ length "transaction_" }
+                fieldLabelModifier = drop $ length "_transaction_" }
+
+
+-- data type for operations
+data UserInfo = UserInfo
+  { userInfo_privkey :: Key
+  , userInfo_pubkey :: Key
+  , userInfo_blake160 :: Key
+  , userInfo_address :: Key
+  } deriving (Generic, Show)
+instance ToJSON UserInfo where
+  toJSON = genericToJSON defaultOptions {
+             fieldLabelModifier = drop $ length "userInfo_" }
+
+instance FromJSON UserInfo where
+  parseJSON = genericParseJSON defaultOptions {
+                fieldLabelModifier = drop $ length "userInfo_" }
+
+data ContractInfo = ContractInfo
+  { contract_info_name :: Name
+  , contract_info_elf_path :: Path
+  , contract_info_code_hash :: Hash
+  , contract_info_tx_hash :: Hash
+  , contract_info_index :: Index
+  } deriving (Generic, Show)
+
+instance ToJSON ContractInfo where
+  toJSON = genericToJSON defaultOptions {
+             fieldLabelModifier = drop $ length "contract_info_" }
+
+instance FromJSON ContractInfo where
+  parseJSON = genericParseJSON defaultOptions {
+                fieldLabelModifier = drop $ length "contract_info_" }
+
+data RetQueryLiveCells = RetQueryLiveCells
+  { ret_queryLiveCells_inputs :: [Input]
+  , ret_queryLiveCells_capacity :: Capacity
+  } deriving (Generic, Show)
+
+instance ToJSON RetQueryLiveCells where
+  toJSON = genericToJSON defaultOptions {
+             fieldLabelModifier = drop $ length "ret_queryLiveCells_" }
+
+instance FromJSON RetQueryLiveCells where
+  parseJSON = genericParseJSON defaultOptions {
+                fieldLabelModifier = drop $ length "ret_queryLiveCells_" }
+
+data CellWithStatus = CellWithStatus
+  { cell_with_status_cell :: Output
+  , cell_with_status_status :: Status
+  } deriving (Generic, Show)
+
+instance ToJSON CellWithStatus where
+  toJSON = genericToJSON defaultOptions {
+             fieldLabelModifier = drop $ length "cell_with_status_" }
+
+instance FromJSON CellWithStatus where
+  parseJSON = genericParseJSON defaultOptions {
+                fieldLabelModifier = drop $ length "cell_with_status_" }
 
 
 -- util function
@@ -153,30 +200,3 @@ mkDepFormContract info = let
   index = contract_info_index info
   cell_outpoint = CellOutPoint hash index
   in OutPoint Nothing (Just cell_outpoint)
-
--- for operations
-data RetGetLiveCellsByCapacity = RetGetLiveCellsByCapacity
-  { ret_getLiveCellsByCapacity_inputs :: [Input]
-  , ret_getLiveCellsByCapacity_capacity :: Capacity
-  } deriving (Generic, Show)
-
-instance ToJSON RetGetLiveCellsByCapacity where
-  toJSON = genericToJSON defaultOptions {
-             fieldLabelModifier = drop $ length "ret_getLiveCellsByCapacity_" }
-
-instance FromJSON RetGetLiveCellsByCapacity where
-  parseJSON = genericParseJSON defaultOptions {
-                fieldLabelModifier = drop $ length "ret_getLiveCellsByCapacity_" }
-
-data CellWithStatus = CellWithStatus
-  { cell_with_status_cell :: Output
-  , cell_with_status_status :: Status
-  } deriving (Generic, Show)
-
-instance ToJSON CellWithStatus where
-  toJSON = genericToJSON defaultOptions {
-             fieldLabelModifier = drop $ length "cell_with_status_" }
-
-instance FromJSON CellWithStatus where
-  parseJSON = genericParseJSON defaultOptions {
-                fieldLabelModifier = drop $ length "cell_with_status_" }

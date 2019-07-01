@@ -2,9 +2,9 @@
 
 require_relative "lib"
 
-capacity = Integer(ARGV[0])
-client = Client.new
-i = client.getLiveCellsByCapacity(capacity)
+lock_hash = ARGV[0]
+capacity = Integer(ARGV[1])
+i = getLiveCellsByCapacity(lock_hash, capacity)
 
 json = {
   inputs: i.inputs.map(&:to_h),

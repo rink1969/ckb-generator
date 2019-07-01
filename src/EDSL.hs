@@ -17,17 +17,20 @@ import Control.Monad.IO.Class (liftIO)
 
 import System.Directory (getCurrentDirectory)
 
+import Control.Lens (set)
+
 -- define of DSL
 data Operator next =
-    GetLiveCellsByCapacity Int (RetGetLiveCellsByCapacity -> next)
+  GetUserInfo Key (UserInfo -> next)
+  | LockHash (Hash, [Arg]) (Hash -> next)
+  | QueryLiveCells (Hash, Int) (RetQueryLiveCells -> next)
   | GetLiveCellByTxHashIndex (Hash, Index) (CellWithStatus -> next)
-  | DeployContract Path (ContractInfo -> next)
---  | Sign Transaction ([Witness] -> next)
-  | SystemScriptDep (Dep -> next)
-  | SendTransaction Transaction (Hash -> next)
+  | DeployContract (UserInfo, Path) (ContractInfo -> next)
+  | Sign (UserInfo, Transaction) ([Witness] -> next)
+  | SystemScript (ContractInfo -> next)
+  | SendTransaction (UserInfo, Transaction) (Hash -> next)
   | SendRawTransaction Transaction (Hash -> next)
   | Ask String (String -> next)
-  | MyLock (Script -> next)
   deriving (Functor)
 
 makeFree ''Operator
@@ -37,51 +40,78 @@ type DappOperator = Operator
 type Dapp = Free DappOperator
 
 -- example of DSL for test
-proc :: Dapp String
-proc = do
-  ask "input capacity"
 
-test1 :: Dapp RetGetLiveCellsByCapacity
-test1 = do
-  scap <- proc
-  let cap = read scap :: Int
-  getLiveCellsByCapacity cap
+test :: Dapp String
+test = do
+  return "xxx"
 
-test2 :: Dapp CellWithStatus
-test2 = do
-  ret <- test1
-  let Just(c) =  outpoint_cell $ input_previous_output $ head $ ret_getLiveCellsByCapacity_inputs ret
-  let args = (cell_outpoint_tx_hash c, cell_outpoint_index c)
-  getLiveCellByTxHashIndex args
+-- contract always_success
+always_success :: Dapp ContractInfo
+always_success = do
+  userinfo <- userInfo
+  deployContract (userinfo, "/home/rink/work/github/edsl/contract/build/always_success")
 
-test3 :: Dapp ContractInfo
-test3 = do
-  path <- ask "contract path"
-  deployContract path
+always_success_lock :: Transaction -> Dapp Transaction
+always_success_lock tx = return tx
 
-deployAlwaysSuccess :: Dapp ContractInfo
-deployAlwaysSuccess = do
-  deployContract "/home/rink/work/github/edsl/contract/build/always_success"
+-- system script
+system_script :: Dapp ContractInfo
+system_script = do
+  systemScript
 
-lockCapacityWithContract :: ContractInfo -> Dapp Hash
-lockCapacityWithContract contractInfo = do
+system_script_lock :: UserInfo -> Transaction -> Dapp Transaction
+system_script_lock user_info tx = do
+  witnesses <- sign (user_info, tx)
+  let stx = set transaction_witnesses witnesses tx
+  return stx
+
+
+-- util code for DSL
+userInfo :: Dapp UserInfo
+userInfo = do
+  key <- ask "privkey"
+  getUserInfo key
+
+capacity :: Dapp Int
+capacity = do
   scap <- ask "input capacity"
   let cap = read scap :: Int
-  ret <- getLiveCellsByCapacity cap
-  let input_capacity_s = ret_getLiveCellsByCapacity_capacity ret
+  return cap
+
+query :: ContractInfo -> UserInfo -> Int -> Dapp RetQueryLiveCells
+query contract_info user_info cap = do
+  let code_hash = contract_info_code_hash contract_info
+  let args = [userInfo_blake160 user_info]
+  lock_hash <- lockHash (code_hash, args)
+  queryLiveCells (lock_hash, cap)
+
+deploy :: Dapp ContractInfo
+deploy = do
+  userinfo <- userInfo
+  path <- ask "contract path"
+  deployContract (userinfo, path)
+
+-- example 1: move capacity from system script to new contract
+moveCapacityToContract :: ContractInfo -> Dapp Hash
+moveCapacityToContract contractInfo = do
+  user_info <- userInfo
+  system_script_info <- system_script
+  cap <- capacity
+  ret <- query system_script_info user_info cap
+  let input_capacity_s = ret_queryLiveCells_capacity ret
   let input_capacity = read input_capacity_s :: Int
-  let inputs = ret_getLiveCellsByCapacity_inputs ret
-  client_lock <- myLock
-  let script = Script (contract_info_code_hash contractInfo) (script_args client_lock)
-  let lock_output = Output scap "0x" script Nothing
+  let inputs = ret_queryLiveCells_inputs ret
+  let script = Script (contract_info_code_hash contractInfo) [userInfo_blake160 user_info]
+  let lock_output = Output (show cap) "0x" script Nothing
   let outputs = [lock_output]
   let charge = input_capacity - cap
-  let charge_output = Output (show charge) "0x" client_lock Nothing
+  let charge_script = Script (contract_info_code_hash system_script_info) [userInfo_blake160 user_info]
+  let charge_output = Output (show charge) "0x" charge_script Nothing
   let outputs = if charge /= 0 then [lock_output, charge_output] else [lock_output]
-  dep <- systemScriptDep
+  let dep = mkDepFormContract system_script_info
   let deps = [dep]
   let tx = Transaction "0x" "0" deps inputs outputs (fake_witness $ length inputs)
-  sendTransaction tx
+  sendTransaction (user_info, tx)
 
 callContract :: ContractInfo -> Hash -> Dapp Hash
 callContract contractInfo preHash = do
@@ -93,7 +123,9 @@ callContract contractInfo preHash = do
   let inputs = [input]
   let outputs = [output]
   let tx = Transaction "0x" "0" deps inputs outputs (fake_witness $ length inputs)
-  sendTransaction tx
+  stx <- always_success_lock tx
+  sendRawTransaction stx
+
 
 -- util functions for client interpreter
 aeson_decode :: FromJSON a => String -> Maybe a
@@ -120,32 +152,43 @@ type DappIO = MaybeT IO
 
 -- client interpreter: translate DSL code to ruby
 clientInterpreter :: DappOperator (DappIO next) -> DappIO next
-clientInterpreter (GetLiveCellsByCapacity capacity next) = do
-  let scapacity = show capacity
-  ret <- call_ruby "getLiveCellsByCapacity" [scapacity]
+clientInterpreter (GetUserInfo privkey next) = do
+  ret <- call_ruby "getUserInfo" [privkey]
   next ret
-clientInterpreter (GetLiveCellByTxHashIndex args next) = do
-  let (hash, index) = args
+clientInterpreter (LockHash (code_hash, args) next) = do
+  ret <- call_ruby "lockHash" ([code_hash] <> args)
+  next ret
+clientInterpreter (QueryLiveCells (lock_hash, capacity) next) = do
+  let scapacity = show capacity
+  ret <- call_ruby "queryLiveCells" [lock_hash, scapacity]
+  next ret
+clientInterpreter (GetLiveCellByTxHashIndex (hash, index) next) = do
   ret <- call_ruby "getLiveCellByTxHashIndex" [hash, index]
   next ret
-clientInterpreter (DeployContract path next) = do
-  ret <- call_ruby "deployContract" [path]
+clientInterpreter (DeployContract (userinfo, path) next) = do
+  let privkey = userInfo_privkey userinfo
+  ret <- call_ruby "deployContract" [privkey, path]
+  next ret
+clientInterpreter (Sign (userinfo, tx) next) = do
+  let privkey = userInfo_privkey userinfo
+  let tx_s = aeson_encode tx
+  let path = "/tmp/tx"
+  liftIO $ writeFile path tx_s
+  ret <- call_ruby "sign" [privkey, path]
   next ret
 clientInterpreter (Ask prompt next) = do
   liftIO $ putStrLn prompt
   something <- liftIO $ getLine
   next something
-clientInterpreter (SystemScriptDep next) = do
-  ret <- call_ruby "systemScriptDep" []
+clientInterpreter (SystemScript next) = do
+  ret <- call_ruby "systemScript" []
   next ret
-clientInterpreter (MyLock next) = do
-  ret <- call_ruby "myLock" []
-  next ret
-clientInterpreter (SendTransaction tx next) = do
+clientInterpreter (SendTransaction (userinfo, tx) next) = do
+  let privkey = userInfo_privkey userinfo
   let tx_s = aeson_encode tx
   let path = "/tmp/tx"
   liftIO $ writeFile path tx_s
-  ret <- call_ruby "sendTransaction" [path]
+  ret <- call_ruby "sendTransaction" [privkey, path]
   next ret
 clientInterpreter (SendRawTransaction rtx next) = do
   let rtx_s = aeson_encode rtx
@@ -154,8 +197,7 @@ clientInterpreter (SendRawTransaction rtx next) = do
   ret <- call_ruby "sendRawTransaction" [path]
   next ret
 
-
-runTest2 = runMaybeT (iterM clientInterpreter $ test2)
-runDeploy = runMaybeT (iterM clientInterpreter $ test3)
-runSetup info = runMaybeT (iterM clientInterpreter $ (lockCapacityWithContract info))
+-- run program write by DSL
+runDeploy = runMaybeT (iterM clientInterpreter $ always_success)
+runSetup info = runMaybeT (iterM clientInterpreter $ (moveCapacityToContract info))
 runCall info hash = runMaybeT (iterM clientInterpreter $ (callContract info hash))
