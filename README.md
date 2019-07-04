@@ -110,7 +110,9 @@ system_script_lock user_info tx = do
 ```haskell
 cabal new-repl
 *Type> :m EDSL
-*Type EDSL> runDeploy 
+*Type EDSL> generate_and_compile_always_success
+/path/to/contract/build/always_success
+*Type EDSL> runDeploy "/path/to/contract/build/always_success"
 privkey
 <<<user input>>> 0x...
 Just (ContractInfo {contract_info_name = "always_success", contract_info_elf_path = "/home/rink/work/github/edsl/contract/build/always_success", contract_info_code_hash = "0x4b3af1e8eb9e2c9e55b925769821dc6eaf61d5ade7f2fe96616b006efc8f4cc3", contract_info_tx_hash = "0xfbfee3330b368275714b57c7ce1349e7f9f877e2286c8ad8cf73e1399512cdf7", contract_info_index = "0"})

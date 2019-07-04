@@ -1,0 +1,59 @@
+{-# LANGUAGE DeriveFunctor, TemplateHaskell, FlexibleContexts #-}
+module LockScript where
+
+import Type
+
+import Control.Monad.Free
+import Control.Monad.Free.TH (makeFree)
+
+import Control.Monad.State (State, state, execState)
+
+-- define of DSL
+data LockOperator tx next =
+  Nop next
+  deriving (Functor)
+
+makeFree ''LockOperator
+
+type ScriptOperator = LockOperator ResolvedTransaction
+
+type LockScript = Free ScriptOperator
+
+-- example of DSL
+-- always_success
+always_success_lock_script :: LockScript ()
+always_success_lock_script = do
+  nop
+
+-- util functions for interpreter
+
+
+-- lock script interpreter: translate DSL code to lock process
+-- type of eval result
+type LockScriptST = State ResolvedTransaction
+
+lockScriptInterpreter :: ScriptOperator (LockScriptST next) -> LockScriptST next
+lockScriptInterpreter (Nop next) = do
+  state $ \tx -> ((), tx)
+  next
+
+-- runner
+always_success_lock_script_func :: ResolvedTransaction -> ResolvedTransaction
+always_success_lock_script_func init_rtx = execState (iterM lockScriptInterpreter $ always_success_lock_script) init_rtx
+
+
+
+
+-- contract interpreter: translate DSL code to c code
+-- type of eval result
+generated_contract_path = "/tmp/contract.c"
+type LockScriptIO = IO
+
+contractInterpreter :: ScriptOperator (LockScriptIO next) -> LockScriptIO next
+contractInterpreter (Nop next) = do
+  writeFile generated_contract_path "int main(int argc, char* argv[]) {return 0;}"
+  next
+
+-- runner
+always_success_lock_script_contract :: IO ()
+always_success_lock_script_contract = iterM contractInterpreter $ always_success_lock_script

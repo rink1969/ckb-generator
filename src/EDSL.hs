@@ -3,6 +3,7 @@ module EDSL where
 
 import Type
 import Call
+import LockScript
 
 import Control.Monad.Free
 import Control.Monad.Free.TH (makeFree)
@@ -39,20 +40,18 @@ type DappOperator = Operator
 
 type Dapp = Free DappOperator
 
--- example of DSL for test
-
-test :: Dapp String
-test = do
-  return "xxx"
 
 -- contract always_success
-always_success :: Dapp ContractInfo
-always_success = do
+always_success :: String -> Dapp ContractInfo
+always_success elf_path = do
   userinfo <- userInfo
-  deployContract (userinfo, "/home/rink/work/github/edsl/contract/build/always_success")
+  deployContract (userinfo, elf_path)
 
 always_success_lock :: Transaction -> Dapp Transaction
-always_success_lock tx = return tx
+always_success_lock tx = do
+  let rtx = ResolvedTransaction tx [] []
+  let new_rtx = always_success_lock_script_func rtx
+  return $ _resolved_transaction_tx new_rtx
 
 -- system script
 system_script :: Dapp ContractInfo
@@ -134,6 +133,7 @@ callContract contractInfo preHash = do
   stx <- always_success_lock tx
   sendRawTransaction stx
 
+-- example 2: move capacity from system script to new contract
 
 -- util functions for client interpreter
 aeson_decode :: FromJSON a => String -> Maybe a
@@ -205,7 +205,16 @@ clientInterpreter (SendRawTransaction rtx next) = do
   ret <- call_ruby "sendRawTransaction" [path]
   next ret
 
+-- runner
+generate_and_compile_always_success :: IO ()
+generate_and_compile_always_success = do
+  always_success_lock_script_contract
+  pwd <- getCurrentDirectory
+  let elf_path = pwd <> "/contract/build/always_success"
+  putStrLn elf_path
+  compile_contract generated_contract_path elf_path
+
 -- run program write by DSL
-runDeploy = runMaybeT (iterM clientInterpreter $ always_success)
+runDeploy elf_path = runMaybeT (iterM clientInterpreter $ always_success elf_path)
 runSetup info = runMaybeT (iterM clientInterpreter $ (moveCapacityToContract info))
 runCall info hash = runMaybeT (iterM clientInterpreter $ (callContract info hash))

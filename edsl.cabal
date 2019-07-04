@@ -48,7 +48,7 @@ extra-source-files:  CHANGELOG.md
 
 library
   -- Modules exported by the library.
-  exposed-modules: Type, Call, EDSL
+  exposed-modules: Type, Call, EDSL, LockScript
 
   -- Modules included in this library but not exported.
   -- other-modules:
@@ -66,6 +66,7 @@ library
                      , transformers
                      , directory
                      , lens
+                     , mtl
 
   -- Directories containing source files.
   hs-source-dirs:      src
