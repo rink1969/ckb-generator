@@ -183,6 +183,22 @@ instance FromJSON CellWithStatus where
   parseJSON = genericParseJSON defaultOptions {
                 fieldLabelModifier = drop $ length "cell_with_status_" }
 
+data ResolvedTransaction = ResolvedTransaction
+  { _resolved_transaction_tx :: Transaction
+  , _resolved_transaction_deps :: [CellWithStatus]
+  , _resolved_transaction_inputs :: [CellWithStatus]
+  } deriving (Generic, Show)
+
+makeLenses ''ResolvedTransaction
+
+instance ToJSON ResolvedTransaction where
+  toJSON = genericToJSON defaultOptions {
+             fieldLabelModifier = drop $ length "_resolved_transaction_" }
+
+instance FromJSON ResolvedTransaction where
+  parseJSON = genericParseJSON defaultOptions {
+                fieldLabelModifier = drop $ length "_resolved_transaction_" }
+
 
 -- util function
 fake_witness :: Int -> [Witness]
@@ -200,3 +216,10 @@ mkDepFormContract info = let
   index = contract_info_index info
   cell_outpoint = CellOutPoint hash index
   in OutPoint Nothing (Just cell_outpoint)
+
+outPoint2Tuple :: OutPoint -> (Hash, Index)
+outPoint2Tuple outpoint = let
+  Just cell_outpoint = outpoint_cell outpoint
+  hash = cell_outpoint_tx_hash cell_outpoint
+  index = cell_outpoint_index cell_outpoint
+  in (hash, index)

@@ -91,6 +91,14 @@ deploy = do
   path <- ask "contract path"
   deployContract (userinfo, path)
 
+resolveTx :: Transaction -> Dapp ResolvedTransaction
+resolveTx tx = do
+  let deps = _transaction_deps tx
+  resolved_deps <- mapM (getLiveCellByTxHashIndex . outPoint2Tuple) deps
+  let inputs = _transaction_inputs tx
+  resolved_inputs <- mapM (getLiveCellByTxHashIndex . outPoint2Tuple . input_previous_output) inputs
+  return $ ResolvedTransaction tx resolved_deps resolved_inputs
+
 -- example 1: move capacity from system script to new contract
 moveCapacityToContract :: ContractInfo -> Dapp Hash
 moveCapacityToContract contractInfo = do
