@@ -48,7 +48,7 @@ extra-source-files:  CHANGELOG.md
 
 library
   -- Modules exported by the library.
-  exposed-modules: Type, Call, EDSL, LockScript, Dapp.Util, Dapp.SystemScript, Dapp.AlwaysSuccess
+  exposed-modules: Type, Call, EDSL, LockScript, CodeGen, Dapp.Util, Dapp.SystemScript, Dapp.AlwaysSuccess
 
   -- Modules included in this library but not exported.
   -- other-modules:
@@ -67,6 +67,10 @@ library
                      , directory
                      , lens
                      , mtl
+                     , language-c99
+                     , language-c99-util
+                     , language-c99-simple
+                     , pretty
 
   -- Directories containing source files.
   hs-source-dirs:      src

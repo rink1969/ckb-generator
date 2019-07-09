@@ -10,8 +10,17 @@ import Call
 import System.Directory (getCurrentDirectory)
 import Control.Monad.Trans.Maybe (runMaybeT)
 import Control.Monad.Free (iterM)
+import Control.Monad.State (execState)
 
 -- contract always_success
+-- lock script runner
+always_success_lock_script_func :: ResolvedTransaction -> ResolvedTransaction
+always_success_lock_script_func init_rtx = execState (iterM lockScriptInterpreter $ always_success_lock_script) init_rtx
+
+-- contract runner
+always_success_lock_script_contract :: IO ()
+always_success_lock_script_contract = iterM contractInterpreter $ always_success_lock_script
+
 always_success :: String -> Dapp ContractInfo
 always_success elf_path = do
   userinfo <- userInfo

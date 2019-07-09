@@ -2,11 +2,12 @@
 module LockScript where
 
 import Type
+import CodeGen
 
 import Control.Monad.Free
 import Control.Monad.Free.TH (makeFree)
 
-import Control.Monad.State (State, state, execState)
+import Control.Monad.State (State, state)
 
 -- define of DSL
 data LockOperator tx next =
@@ -37,12 +38,6 @@ lockScriptInterpreter (Nop next) = do
   state $ \tx -> ((), tx)
   next
 
--- runner
-always_success_lock_script_func :: ResolvedTransaction -> ResolvedTransaction
-always_success_lock_script_func init_rtx = execState (iterM lockScriptInterpreter $ always_success_lock_script) init_rtx
-
-
-
 
 -- contract interpreter: translate DSL code to c code
 -- type of eval result
@@ -51,9 +46,5 @@ type LockScriptIO = IO
 
 contractInterpreter :: ScriptOperator (LockScriptIO next) -> LockScriptIO next
 contractInterpreter (Nop next) = do
-  writeFile generated_contract_path "int main(int argc, char* argv[]) {return 0;}"
+  writeFile generated_contract_path printMain
   next
-
--- runner
-always_success_lock_script_contract :: IO ()
-always_success_lock_script_contract = iterM contractInterpreter $ always_success_lock_script
