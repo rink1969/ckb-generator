@@ -48,7 +48,7 @@ extra-source-files:  CHANGELOG.md
 
 library
   -- Modules exported by the library.
-  exposed-modules: Type, Call, EDSL, LockScript
+  exposed-modules: Type, Call, EDSL, LockScript, Dapp.Util, Dapp.SystemScript, Dapp.AlwaysSuccess
 
   -- Modules included in this library but not exported.
   -- other-modules:
