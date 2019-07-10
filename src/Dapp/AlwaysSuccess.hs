@@ -13,6 +13,10 @@ import Control.Monad.Free (iterM)
 import Control.Monad.State (execState)
 
 -- contract always_success
+always_success_lock_script :: LockScript ()
+always_success_lock_script = do
+  nop
+
 -- lock script runner
 always_success_lock_script_func :: ResolvedTransaction -> ResolvedTransaction
 always_success_lock_script_func init_rtx = execState (iterM lockScriptInterpreter $ always_success_lock_script) init_rtx

@@ -22,9 +22,7 @@ type LockScript = Free ScriptOperator
 
 -- example of DSL
 -- always_success
-always_success_lock_script :: LockScript ()
-always_success_lock_script = do
-  nop
+
 
 -- util functions for interpreter
 

@@ -78,19 +78,21 @@ instance FromJSON Script where
 
 
 data Output = Output
-  { output_capacity :: Capacity
-  , output_data :: Data
-  , output_lock :: Script
-  , output_type :: Maybe Script
+  { _output_capacity :: Capacity
+  , _output_data :: Data
+  , _output_lock :: Script
+  , _output_type :: Maybe Script
   } deriving (Generic, Show)
+
+makeLenses ''Output
 
 instance ToJSON Output where
   toJSON = genericToJSON defaultOptions {
-             fieldLabelModifier = drop $ length "output_" }
+             fieldLabelModifier = drop $ length "_output_" }
 
 instance FromJSON Output where
   parseJSON = genericParseJSON defaultOptions {
-                fieldLabelModifier = drop $ length "output_" }
+                fieldLabelModifier = drop $ length "_output_" }
 
 
 data Witness = Witness  { witness_data :: [Data]}  deriving (Generic, Show)
@@ -223,3 +225,14 @@ outPoint2Tuple outpoint = let
   hash = cell_outpoint_tx_hash cell_outpoint
   index = cell_outpoint_index cell_outpoint
   in (hash, index)
+{-
+let wa = [Witness ["1a"], Witness ["2a"], Witness ["3a"]]
+let wb = [Witness ["1b"], Witness ["2b"], Witness ["3b"]]
+let wc = [Witness ["1c"], Witness ["2c"], Witness ["3c"]]
+let all_witness = [wa,wb,wc]
+> mergeWitnesses all_witness
+[Witness {witness_data = ["1a","1b","1c"]},Witness {witness_data = ["2a","2b","2c"]},Witness {witness_data = ["3a","3b","3c"]}]
+-}
+mergeWitnesses :: [[Witness]] -> [Witness]
+mergeWitnesses ([]:_) = []
+mergeWitnesses all = [Witness $ concat $ map witness_data $ map head all] <> mergeWitnesses (map tail all)

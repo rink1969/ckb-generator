@@ -109,22 +109,85 @@ system_script_lock user_info tx = do
 
 ```haskell
 cabal new-repl
-*Type> :m EDSL
-*Type EDSL> generate_and_compile_always_success
+*Type> :m Dapp.AlwaysSuccess
+Prelude Dapp.AlwaysSuccess> generate_and_compile_always_success
 /path/to/contract/build/always_success
-*Type EDSL> runDeploy "/path/to/contract/build/always_success"
+Prelude Dapp.AlwaysSuccess> runDeploy "/path/to/contract/build/always_success"
 privkey
 <<<user input>>> 0x...
-Just (ContractInfo {contract_info_name = "always_success", contract_info_elf_path = "/home/rink/work/github/edsl/contract/build/always_success", contract_info_code_hash = "0x4b3af1e8eb9e2c9e55b925769821dc6eaf61d5ade7f2fe96616b006efc8f4cc3", contract_info_tx_hash = "0xfbfee3330b368275714b57c7ce1349e7f9f877e2286c8ad8cf73e1399512cdf7", contract_info_index = "0"})
-*Type EDSL> let Just info = it
-*Type EDSL> runSetup info
+Just (ContractInfo {contract_info_name = "always_success", contract_info_elf_path = "/path/to/contract/build/always_success", contract_info_code_hash = "0x4b3af1e8eb9e2c9e55b925769821dc6eaf61d5ade7f2fe96616b006efc8f4cc3", contract_info_tx_hash = "0x492bbeba62a8c9decdab56d03d24f215727a974609f422d32d3929d25f5c4af4", contract_info_index = "0"})
+Prelude Dapp.AlwaysSuccess> let Just info = it
+Prelude Dapp.AlwaysSuccess> runSetup info
 privkey
 <<<user input>>> 0x...
 input capacity
 <<<user input>>> 100000000000
-Just "0xe5e918de0535c8b25a390e64c88168efa2fbd3539d55801f95e0fe45c5033abd"
-*Type EDSL> let Just prehash = it
-*Type EDSL> runCall info prehash 
-Just "0xabe95418f853f696aa7e5206600eb988f82e7ff91fbd40f55ae8b3d4893b1a6d"
+Just "0x98edfbeb3661c91e6230574140aeeef7061141c1cf59be0651213172d303bf63"
+Prelude Dapp.AlwaysSuccess> let Just prehash = it
+Prelude Dapp.AlwaysSuccess> runCall info prehash 
+Just "0x071387b7dc189328cd0641652dc2de41f1a3f43a565ed2b6e01c35c984b5118a"
+```
+
+第二个示例 `Vote`
+
+```haskell
+cabal new-repl
+*Type> :m Dapp.Vote
+Prelude Dapp.Vote> writeVoteConfig $ mkVoteConfig 3 2 ["4a88cef22e4e71c48c40da51c1d6bd16daa97aa7", "a47f8029997fcc67aff87384daac404f39e31ceb", "96f4093cf179aaa369379402d74f70090fae11ec"]
+Prelude Dapp.Vote> runDeployConfigData 
+privkey
+<<<user input>>> 0x...
+Just (ContractInfo {contract_info_name = "vote_config_data", contract_info_elf_path = "/tmp/vote_config_data", contract_info_code_hash = "0xa3f95fbb3f39cbc8c332540adc28da64da89ebb4c771e03d322c7627cf14c095", contract_info_tx_hash = "0xa508f9e41900beaaa1ca69d5a3a59310ca890b52be0e54543aca9cb5ca41f00f", contract_info_index = "0"})
+Prelude Dapp.Vote> let Just config_info = it
+Prelude Dapp.Vote> runDeployVoteContract 
+privkey
+<<<user input>>> 0x...
+elf path
+/path/to/ckb-contract-examples/vote
+Just (ContractInfo {contract_info_name = "vote", contract_info_elf_path = "/path/to/ckb-contract-examples/vote", contract_info_code_hash = "0xa62834729f93950b5c812bd56d86613d06d3c01198a6243de8445d7594c108d2", contract_info_tx_hash = "0x55b662d0573161095ff03de5cd0179e97a016dc4cf5a4e02e0d54d547a380277", contract_info_index = "0"})
+Prelude Dapp.Vote> let Just contract_info = it
+Prelude Dapp.Vote> runVote "0x" contract_info
+privkey
+<<<user input>>> 0x...   (privkey for 0x4a88cef22e4e71c48c40da51c1d6bd16daa97aa7)
+input capacity
+<<<user input>>> 20000000000
+Just "0x978b1ecf5f531184a517b291b350727b6cd5605265abb466423c86ca859a44d3"
+Prelude Dapp.Vote> let Just vote_tx = it
+Prelude Dapp.Vote> runVote "0xbb" contract_info
+privkey
+<<<user input>>> 0x...   (privkey for 0xa47f8029997fcc67aff87384daac404f39e31ceb)
+input capacity
+<<<user input>>> 20000000000
+Just "0xd5f5ca6f47ff75e172fe8be72c4c3b8ae3ac9d568ab7d6d5fde44baf42e0d13e"
+Prelude Dapp.Vote> let Just vote1_tx = it
+Prelude Dapp.Vote> runVote "0x" contract_info
+privkey
+<<<user input>>> 0x...   (privkey for 0x96f4093cf179aaa369379402d74f70090fae11ec)
+input capacity
+<<<user input>>> 20000000000
+Just "0xa903365c01e8db1c71f3cad27501f01f3b67039e1653ca5185ba4880453cae79"
+Prelude Dapp.Vote> let Just vote2_tx = it
+Prelude Dapp.Vote> runReVote "0xaa" contract_info vote_tx
+privkey
+<<<user input>>> 0x...   (privkey for 0x4a88cef22e4e71c48c40da51c1d6bd16daa97aa7)
+Just "0xaa579390b6fcde0df064743b98527f5e562ba257d2e8e82c764f9598b8e72fd1"
+Prelude Dapp.Vote> let Just vote_tx = it
+*Type Dapp.Vote> runSumVots [vote_tx, vote1_tx, vote2_tx] contract_info config_info "0x4a88cef22e4e71c48c40da51c1d6bd16daa97aa7"
+privkey
+<<<user input>>> 0x...   (privkey for 0x4a88cef22e4e71c48c40da51c1d6bd16daa97aa7)
+Just (Transaction { ...
+*Type Dapp.Vote> let Just sum_tx = it
+*Type Dapp.Vote> runSumVots [vote_tx, vote1_tx, vote2_tx] contract_info config_info "0x4a88cef22e4e71c48c40da51c1d6bd16daa97aa7"
+privkey
+<<<user input>>> 0x...   (privkey for 0xa47f8029997fcc67aff87384daac404f39e31ceb)
+Just (Transaction { ...
+*Type Dapp.Vote> let Just sum1_tx = it
+*Type Dapp.Vote> runSumVots [vote_tx, vote1_tx, vote2_tx] contract_info config_info "0x4a88cef22e4e71c48c40da51c1d6bd16daa97aa7"
+privkey
+<<<user input>>> 0x...   (privkey for 0x96f4093cf179aaa369379402d74f70090fae11ec)
+Just (Transaction { ...
+*Type Dapp.Vote> let Just sum2_tx = it
+*Type Dapp.Vote> runMerge [sum_tx, sum1_tx, sum2_tx]
+Just "0xff729c2efd4ff038086f64e90c9a1f4d16ac3222d8b00919678002372d978deb"
 ```
 
