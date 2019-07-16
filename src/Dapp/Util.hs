@@ -28,27 +28,34 @@ deploy = do
   path <- ask "contract path"
   deployContract (userinfo, path)
 
-resolveTx :: Transaction -> Dapp ResolvedTransaction
-resolveTx tx = do
+resolveTx :: ContractCmd -> Transaction -> Dapp ResolvedTransaction
+resolveTx cmd tx = do
   let deps = _transaction_deps tx
   resolved_deps <- mapM (getLiveCellByTxHashIndex . outPoint2Tuple) deps
   let inputs = _transaction_inputs tx
   resolved_inputs <- mapM (getLiveCellByTxHashIndex . outPoint2Tuple . input_previous_output) inputs
-  return $ ResolvedTransaction tx resolved_deps resolved_inputs ""
+  return $ ResolvedTransaction tx resolved_deps resolved_inputs cmd
+
+gatherArgs :: [Hash] -> Dapp [Hash]
+gatherArgs init_args = do
+  s <- ask "Please input Arg or Input \"e\" to end of input"
+  case s of
+    "e" -> return init_args
+    arg -> gatherArgs (init_args ++ [arg])
 
 
-transferCapacity :: DappInfo -> DappInfo -> Dapp Hash
-transferCapacity from to = do
+transferCapacity :: ContractCmd -> DappInfo -> DappInfo -> Dapp Hash
+transferCapacity cmd from to = do
   key <- ask "Please input sender user privkey:"
   from_user_info <- getUserInfo key
-  to_blake160 <- ask "Please input receiver blake160:"
+  args <- gatherArgs []
   cap <- capacity
   output_data <- ask "data in output"
   ret <- query from from_user_info cap
   let input_capacity_s = ret_queryLiveCells_capacity ret
   let input_capacity = read input_capacity_s :: Int
   let inputs = ret_queryLiveCells_inputs ret
-  let script = Script (contract_info_code_hash $ dapp_contract_info to) [to_blake160]
+  let script = Script (contract_info_code_hash $ dapp_contract_info to) args
   let lock_output = Output (show cap) ("0x" <> output_data) script Nothing
   let outputs = [lock_output]
   let charge = input_capacity - cap
@@ -62,9 +69,27 @@ transferCapacity from to = do
   case maybe_lock_func of
     Nothing -> sendTransaction (from_user_info, tx)
     Just lock_func -> do
-      init_rtx <- resolveTx tx
+      init_rtx <- resolveTx cmd tx
       let new_rtx = lock_func init_rtx
       sendRawTransaction $ _resolved_transaction_tx new_rtx
 
-
+updateCell :: (Output -> Output) -> ContractCmd ->  DappInfo-> Hash -> Index -> Dapp Hash
+updateCell func cmd info hash index = do
+  user_info <- userInfo
+  c <- getLiveCellByTxHashIndex (hash, index)
+  let output = cell_with_status_cell c
+  let new_output = func output
+  let input = mkInput hash index "0"
+  let dep = mkDepFormContract $ dapp_contract_info info
+  let deps = [dep]
+  let inputs = [input]
+  let outputs = [new_output]
+  let tx = Transaction "0x" "0" deps inputs outputs (fake_witness $ length inputs)
+  let maybe_lock_func = dapp_lock_func info
+  case maybe_lock_func of
+    Nothing -> sendTransaction (user_info, tx)
+    Just lock_func -> do
+      init_rtx <- resolveTx cmd tx
+      let new_rtx = lock_func init_rtx
+      sendRawTransaction $ _resolved_transaction_tx new_rtx
 

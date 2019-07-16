@@ -4,7 +4,7 @@ module Type where
 
 import GHC.Generics (Generic)
 import Data.Aeson (FromJSON, ToJSON, fieldLabelModifier, parseJSON, toJSON, defaultOptions, genericParseJSON, genericToJSON)
-import Control.Lens (makeLenses)
+import Control.Lens (makeLenses, set)
 
 type Path = String
 type Hash = String
@@ -17,6 +17,7 @@ type Index = String
 type Since = String
 type Status = String
 type Version = String
+type ContractCmd = String
 
 
 -- data type from ckb
@@ -233,3 +234,14 @@ let all_witness = [wa,wb,wc]
 mergeWitnesses :: [[Witness]] -> [Witness]
 mergeWitnesses ([]:_) = []
 mergeWitnesses all = [Witness $ concat $ map witness_data $ map head all] <> mergeWitnesses (map tail all)
+
+mergeTransactions :: [Transaction] -> Transaction
+mergeTransactions txs = do
+  let all_witnesses = map _transaction_witnesses txs
+  let witness = mergeWitnesses all_witnesses
+  let tx = head txs
+  let stx = set transaction_witnesses witness tx
+  stx
+
+updateOutputData :: Data -> Output -> Output
+updateOutputData new_data old_output = set output_data new_data old_output
