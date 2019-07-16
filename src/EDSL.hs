@@ -4,6 +4,7 @@ module EDSL where
 import Type
 import Call
 import LockScript
+import CodeGen
 
 import Control.Monad.Free
 import Control.Monad.Free.TH (makeFree)
@@ -18,6 +19,10 @@ import Control.Monad.IO.Class (liftIO)
 
 import System.Directory (getCurrentDirectory)
 
+import Control.Monad.Free (iterM)
+import Control.Monad.State (execState)
+
+
 -- define of DSL
 data Operator next =
   GetUserInfo Key (UserInfo -> next)
@@ -30,6 +35,7 @@ data Operator next =
   | SendTransaction (UserInfo, Transaction) (Hash -> next)
   | SendRawTransaction Transaction (Hash -> next)
   | Ask String (String -> next)
+  | MkDappInfo (Name, Maybe (LockScript())) (DappInfo -> next)
   deriving (Functor)
 
 makeFree ''Operator
@@ -57,6 +63,13 @@ call_ruby func args = do
   pwd <- liftIO $ getCurrentDirectory
   output <- liftIO $ call (pwd <> "/ruby/" <> func <> ".sh") args
   decode_output output
+
+gen_contract :: Name -> LockScript () -> IO ()
+gen_contract name lock_script = do
+  let stmts = execState (iterM contractInterpreter $ lock_script) []
+  let code = genCode stmts
+  path <- source_abs_path name
+  writeFile path code
 
 
 -- type of eval result
@@ -108,3 +121,18 @@ clientInterpreter (SendRawTransaction rtx next) = do
   liftIO $ writeFile path rtx_s
   ret <- call_ruby "sendRawTransaction" [path]
   next ret
+
+clientInterpreter (MkDappInfo ("system", Nothing) next) = do
+  info <- call_ruby "systemScript" []
+  let system_info = DappInfo info Nothing
+  next system_info
+clientInterpreter (MkDappInfo (name, Just lock_script) next) = do
+  liftIO $ gen_contract name lock_script
+  liftIO $ compile_contract name
+  liftIO $ putStrLn "Please input privkey:"
+  privkey <- liftIO $ getLine
+  path <- liftIO $ elf_abs_path name
+  contract_info <- call_ruby "deployContract" [privkey, path]
+  let lock_func = \rtx -> execState (iterM lockInterpreter $ lock_script) rtx
+  let dapp_info = DappInfo contract_info (Just lock_func)
+  next dapp_info

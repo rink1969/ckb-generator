@@ -109,23 +109,34 @@ system_script_lock user_info tx = do
 
 ```haskell
 cabal new-repl
-*Type> :m Dapp.AlwaysSuccess
-Prelude Dapp.AlwaysSuccess> generate_and_compile_always_success
-/path/to/contract/build/always_success
-Prelude Dapp.AlwaysSuccess> runDeploy "/path/to/contract/build/always_success"
-privkey
+*Type> :m Dapp.AlwaysSuccess 
+Prelude Dapp.AlwaysSuccess> runAlwaysSuccess 
+Begin to run Dapp always_sucess!
+Press Enter to continue...
+<<<user input>>>
+Please input privkey:
 <<<user input>>> 0x...
-Just (ContractInfo {contract_info_name = "always_success", contract_info_elf_path = "/path/to/contract/build/always_success", contract_info_code_hash = "0x4b3af1e8eb9e2c9e55b925769821dc6eaf61d5ade7f2fe96616b006efc8f4cc3", contract_info_tx_hash = "0x492bbeba62a8c9decdab56d03d24f215727a974609f422d32d3929d25f5c4af4", contract_info_index = "0"})
-Prelude Dapp.AlwaysSuccess> let Just info = it
-Prelude Dapp.AlwaysSuccess> runSetup info
-privkey
+Move some capacity from system_script to contract always_sucess!
+Press Enter to continue...
+<<<user input>>>
+Please input sender user privkey:
 <<<user input>>> 0x...
+Please input receiver blake160:
+<<<user input>>> 0x4a88cef22e4e71c48c40da51c1d6bd16daa97aa7
 input capacity
 <<<user input>>> 100000000000
-Just "0x98edfbeb3661c91e6230574140aeeef7061141c1cf59be0651213172d303bf63"
-Prelude Dapp.AlwaysSuccess> let Just prehash = it
-Prelude Dapp.AlwaysSuccess> runCall info prehash 
-Just "0x071387b7dc189328cd0641652dc2de41f1a3f43a565ed2b6e01c35c984b5118a"
+data in output
+<<<user input>>> 
+Start loop call contract always_sucess!
+Press Enter to continue...
+<<<user input>>>
+Loop call contract always_sucess!
+Press Enter to continue...Input "e" to exit loop...
+<<<user input>>>
+Loop call contract always_sucess!
+Press Enter to continue...Input "e" to exit loop...
+<<<user input>>> e
+Just "0x6c746347d5b029f6c64775e53f8e15d0cce1f2d5a46b844b5e9e6eb2151530f6"
 ```
 
 第二个示例 `Vote`

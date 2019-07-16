@@ -9,6 +9,9 @@ import Language.C99.Pretty  (pretty)
 import Language.C99.Simple
 
 
-mainFunc = FunDef (TypeSpec Int) "main" [Param (TypeSpec Int) "argc", Param (Array (Ptr (TypeSpec Char)) Nothing) "argv"] [] [Return $ Just (LitInt 0)]
+-- mainFunc = FunDef (TypeSpec Int) "main" [Param (TypeSpec Int) "argc", Param (Array (Ptr (TypeSpec Char)) Nothing) "argv"] [] [Return $ Just (LitInt 0)]
 
-printMain = render $ pretty $ translate $ TransUnit [] [mainFunc]
+-- printMain = render $ pretty $ translate $ TransUnit [] [mainFunc]
+
+genCode stmts = render $ pretty $ translate $ TransUnit [] [mainFunc] where
+  mainFunc = FunDef (TypeSpec Int) "main" [Param (TypeSpec Int) "argc", Param (Array (Ptr (TypeSpec Char)) Nothing) "argv"] [] stmts

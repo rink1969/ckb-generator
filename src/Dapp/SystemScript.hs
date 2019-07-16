@@ -6,9 +6,9 @@ import Type
 import Control.Lens (set)
 
 -- system script
-system_script :: Dapp ContractInfo
-system_script = do
-  systemScript
+system_script_info :: Dapp DappInfo
+system_script_info = do
+  mkDappInfo ("system", Nothing)
 
 system_script_lock :: UserInfo -> Transaction -> Dapp Transaction
 system_script_lock user_info tx = do

@@ -56,7 +56,6 @@ library
                  , Dapp.Util
                  , Dapp.SystemScript
                  , Dapp.AlwaysSuccess
-                 , Dapp.Vote
 
   -- Modules included in this library but not exported.
   -- other-modules:

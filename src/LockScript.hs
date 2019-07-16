@@ -2,12 +2,13 @@
 module LockScript where
 
 import Type
-import CodeGen
+
+import Language.C99.Simple
 
 import Control.Monad.Free
 import Control.Monad.Free.TH (makeFree)
 
-import Control.Monad.State (State, state)
+import Control.Monad.State (State, state, modify)
 
 -- define of DSL
 data LockOperator tx next =
@@ -29,20 +30,19 @@ type LockScript = Free ScriptOperator
 
 -- lock script interpreter: translate DSL code to lock process
 -- type of eval result
-type LockScriptST = State ResolvedTransaction
+type LockST = State ResolvedTransaction
 
-lockScriptInterpreter :: ScriptOperator (LockScriptST next) -> LockScriptST next
-lockScriptInterpreter (Nop next) = do
-  state $ \tx -> ((), tx)
+lockInterpreter :: ScriptOperator (LockST next) -> LockST next
+lockInterpreter (Nop next) = do
+  modify id
   next
 
 
 -- contract interpreter: translate DSL code to c code
 -- type of eval result
-generated_contract_path = "/tmp/contract.c"
-type LockScriptIO = IO
+type ContractST = State [Stmt]
 
-contractInterpreter :: ScriptOperator (LockScriptIO next) -> LockScriptIO next
+contractInterpreter :: ScriptOperator (ContractST next) -> ContractST next
 contractInterpreter (Nop next) = do
-  writeFile generated_contract_path printMain
+  modify ((Return $ Just (LitInt 0)) :)
   next

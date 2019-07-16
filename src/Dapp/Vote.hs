@@ -16,9 +16,27 @@ import qualified Data.Text as T
 
 import Control.Monad.Trans.Maybe (runMaybeT)
 import Control.Monad.Free (iterM)
+import Control.Monad.State (execState)
+
+
+-- contract vote
+vote_lock_script :: LockScript ()
+vote_lock_script = do
+  nop
+
+-- lock script runner
+vote_lock_script_func :: ResolvedTransaction -> ResolvedTransaction
+vote_lock_script_func init_rtx = execState (iterM lockInterpreter $ vote_lock_script) init_rtx
+
+-- contract runner
+vote_lock_script_contract :: IO ()
+vote_lock_script_contract = do
+  let stmts = execState (iterM contractInterpreter $ vote_lock_script) []
+  let code = genCode stmts
+  path <- source_abs_path "vote"
+  writeFile path code
 
 -- vote config for mutil-signatures
-voteConfigDataPath = "/tmp/vote_config_data"
 data VoteConfig = VoteConfig
   { total :: Word8
   , threshold :: Word8
@@ -35,17 +53,19 @@ mkVoteConfig total threshold args =  VoteConfig wtotal wthreshold wargs where
 writeVoteConfig :: VoteConfig -> IO ()
 writeVoteConfig vote_config = BS.writeFile voteConfigDataPath bs where
   bs = BS.pack ([total vote_config] <> [threshold vote_config] <> (concat $ args vote_config))
+  voteConfigDataPath = elf_abs_path "vote_config_data"
 
 -- deploy config data
 deployConfigData :: Dapp ContractInfo
 deployConfigData = do
   userinfo <- userInfo
+  voteConfigDataPath <- elfAbsPath "vote_config_data"
   deployContract (userinfo, voteConfigDataPath)
 
 deployVoteContract :: Dapp ContractInfo
 deployVoteContract = do
   userinfo <- userInfo
-  path <- ask "elf path"
+  path <- elfAbsPath "vote"
   deployContract (userinfo, path)
 
 

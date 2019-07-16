@@ -189,18 +189,15 @@ data ResolvedTransaction = ResolvedTransaction
   { _resolved_transaction_tx :: Transaction
   , _resolved_transaction_deps :: [CellWithStatus]
   , _resolved_transaction_inputs :: [CellWithStatus]
+  , _resolved_transaction_func :: Name
   } deriving (Generic, Show)
 
 makeLenses ''ResolvedTransaction
 
-instance ToJSON ResolvedTransaction where
-  toJSON = genericToJSON defaultOptions {
-             fieldLabelModifier = drop $ length "_resolved_transaction_" }
-
-instance FromJSON ResolvedTransaction where
-  parseJSON = genericParseJSON defaultOptions {
-                fieldLabelModifier = drop $ length "_resolved_transaction_" }
-
+data DappInfo = DappInfo
+  { dapp_contract_info :: ContractInfo
+  , dapp_lock_func :: Maybe (ResolvedTransaction -> ResolvedTransaction)
+  }
 
 -- util function
 fake_witness :: Int -> [Witness]

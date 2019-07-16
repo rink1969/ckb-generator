@@ -1,0 +1,6 @@
+[submodule "contract/deps/secp256k1"]
+	path = contract/deps/secp256k1
+	url = https://github.com/nervosnetwork/secp256k1
+[submodule "contract/deps/flatcc"]
+	path = contract/deps/flatcc
+	url = https://github.com/dvidelabs/flatcc
