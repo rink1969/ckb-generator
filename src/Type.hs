@@ -186,10 +186,12 @@ instance FromJSON CellWithStatus where
                 fieldLabelModifier = drop $ length "cell_with_status_" }
 
 data LockScriptCmd = LockScriptComplete
-  | LockScriptNeedSign
-  | LockScriptSystemSign
-  | LockScriptNeedMultiSig
-  | LockScriptOther String
+  | LockScriptNop
+  | LockScriptUpdateCell
+  | LockScriptBinaryVote
+  | LockScriptMultiSigData
+  | LockScriptSystemLock
+  | LockScriptMultiSig
   deriving (Generic, Show)
 
 data ResolvedTransaction = ResolvedTransaction
@@ -252,6 +254,6 @@ mergeTransactions txs = do
 updateOutputData :: Data -> Output -> Output
 updateOutputData new_data old_output = set output_data new_data old_output
 
-fetchOldOutputScript :: ResolvedTransaction -> Script
-fetchOldOutputScript rtx = _output_lock old_output where
-  old_output = (_transaction_outputs $ _resolved_transaction_tx rtx) !! 0
+fetchOldOutputScript :: Transaction -> Script
+fetchOldOutputScript tx = _output_lock old_output where
+  old_output = (_transaction_outputs tx) !! 0

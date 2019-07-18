@@ -71,13 +71,13 @@ transferCapacity from to = do
   case maybe_lock_func of
     Nothing -> sendTransaction (from_user_info, tx)
     Just lock_func -> do
-      init_rtx <- resolveTx LockScriptNeedSign tx
+      init_rtx <- resolveTx LockScriptUpdateCell tx
       let new_rtx = lock_func init_rtx
       case (_resolved_transaction_func new_rtx) of
-        LockScriptSystemSign -> do
+        LockScriptSystemLock -> do
           tx <- system_script_lock $ _resolved_transaction_tx new_rtx
           sendRawTransaction tx
-        LockScriptComplete -> sendRawTransaction $ _resolved_transaction_tx new_rtx
+        _ -> sendRawTransaction $ _resolved_transaction_tx new_rtx
 
 updateCell :: (Output -> Output) ->  DappInfo-> Hash -> Index -> Dapp Hash
 updateCell func info hash index = do
@@ -95,13 +95,13 @@ updateCell func info hash index = do
   case maybe_lock_func of
     Nothing -> sendTransaction (user_info, tx)
     Just lock_func -> do
-      init_rtx <- resolveTx LockScriptNeedSign tx
+      init_rtx <- resolveTx LockScriptUpdateCell tx
       let new_rtx = lock_func init_rtx
       case (_resolved_transaction_func new_rtx) of
-        LockScriptSystemSign -> do
+        LockScriptSystemLock -> do
           tx <- system_script_lock $ _resolved_transaction_tx new_rtx
           sendRawTransaction tx
-        LockScriptComplete -> sendRawTransaction $ _resolved_transaction_tx new_rtx
+        _ -> sendRawTransaction $ _resolved_transaction_tx new_rtx
 
 
 -- system script

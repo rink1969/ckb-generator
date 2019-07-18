@@ -24,7 +24,6 @@ data LockOperator tx next =
   | LockOperatorUpdateCell next
   | LockOperatorBinaryVote next
   | LockOperatorMultiSigData next
-  --LockOperatorOr ()
   deriving (Functor)
 
 makeFree ''LockOperator
@@ -50,25 +49,21 @@ mkMultiSigConfig path total threshold args =  BS.writeFile path bs where
   bs = BS.pack ([multi_sig_total config] <> [multi_sig_threshold config] <> (concat $ multi_sig_args config))
 
 processBinaryVote :: ResolvedTransaction -> ResolvedTransaction
-processBinaryVote rtx = ResolvedTransaction new_tx [] [] LockScriptNeedMultiSig where
-  tx = _resolved_transaction_tx rtx
-  cs = _resolved_transaction_inputs rtx
-  data_lens = map (length . _output_data. cell_with_status_cell) cs
+processBinaryVote (ResolvedTransaction tx deps inputs LockScriptBinaryVote) = ResolvedTransaction new_tx [] [] LockScriptMultiSig where
+  data_lens = map (length . _output_data. cell_with_status_cell) inputs
   total = length data_lens
   yes = length $ filter (> 2) data_lens
   output_data = T.unpack $ toText $ fromBinary ((fromIntegral total) :: Word8, (fromIntegral yes) :: Word8)
-  output_cap = foldl (+) 0 (map ((read :: String -> Int) . _output_capacity. cell_with_status_cell) cs)
-  output_script = fetchOldOutputScript rtx
+  output_cap = foldl (+) 0 (map ((read :: String -> Int) . _output_capacity. cell_with_status_cell) inputs)
+  output_script = fetchOldOutputScript tx
   new_output = Output (show output_cap) ("0x" <> output_data) output_script Nothing
   new_tx = set transaction_outputs [new_output] tx
 
 processUpdateCell :: ResolvedTransaction -> ResolvedTransaction
-processUpdateCell rtx = ResolvedTransaction tx [] [] LockScriptSystemSign where
-  tx = _resolved_transaction_tx rtx
+processUpdateCell (ResolvedTransaction tx _ _ LockScriptUpdateCell) = ResolvedTransaction tx [] [] LockScriptSystemLock
 
 processMultiSigData :: ResolvedTransaction -> ResolvedTransaction
-processMultiSigData rtx = ResolvedTransaction tx [] [] LockScriptNeedMultiSig where
-  tx = _resolved_transaction_tx rtx
+processMultiSigData (ResolvedTransaction tx _ _ LockScriptMultiSigData) = ResolvedTransaction tx [] [] LockScriptMultiSig
 
 -- lock script interpreter: translate DSL code to lock process
 -- type of eval result
@@ -95,7 +90,6 @@ type ContractST = State [Stmt]
 
 contractInterpreter :: ScriptOperator (ContractST next) -> ContractST next
 contractInterpreter (LockOperatorNop next) = do
-  modify ((Expr $ AssignOp Assign (Ident "ret") (LitInt 0)) :)
   next
 contractInterpreter (LockOperatorUpdateCell next) = do
   modify ((Expr $ AssignOp Assign (Ident "ret") (BinaryOp LOr (Ident "ret") (Funcall (Ident "verify_sighash_all") [Index (Ident "argv") (LitInt 0), LitInt 0]))) :)

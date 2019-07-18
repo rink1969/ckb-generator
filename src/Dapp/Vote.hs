@@ -19,8 +19,7 @@ vote_name = "vote"
 vote_lock_script :: LockScript ()
 vote_lock_script = do
   lockOperatorUpdateCell
-  lockOperatorMultiSigData
-  lockOperatorBinaryVote
+  --lockOperatorAnd lockOperatorMultiSigData lockOperatorBinaryVote
 
 
 -- vote config for mutil-signatures
@@ -50,7 +49,7 @@ sumVotes hashes vote_info config_info system_info arg = do
   let output_script = Script (contract_info_code_hash $ dapp_contract_info system_info) [arg]
   let outputs = [Output "0" "0x" output_script Nothing]
   let tx = Transaction "0x" "0" deps inputs outputs (fake_witness $ length inputs)
-  rtx <- resolveTx (LockScriptOther "sum") tx
+  rtx <- resolveTx LockScriptBinaryVote tx
   let Just lock_func = dapp_lock_func vote_info
   return $ lock_func rtx
 
