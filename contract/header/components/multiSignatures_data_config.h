@@ -22,19 +22,23 @@ struct MSDC_Conifg {
 static struct MSDC_Conifg msdc_config;
 static int msdc_parse_config() {
     char buf[MSDC_TEMP_SIZE];
+    ckb_debug("Enter msdc_parse_config\n");
     {
         volatile uint64_t len = MSDC_TEMP_SIZE;
         if (ckb_load_cell_by_field(buf, &len, 0, 1, CKB_SOURCE_DEP, CKB_CELL_FIELD_DATA) != CKB_SUCCESS) {
+            ckb_debug("MSDC_LOAD_DATA_ERROR 29\n");
             return MSDC_LOAD_DATA_ERROR;
         }
         int count = buf[0];
         if (len != 2 + count * BLAKE160_SIZE) {
+            ckb_debug("MSDC_INVALID_CONFIG_DATA 34\n");
             return MSDC_INVALID_CONFIG_DATA;
         }
     }
     msdc_config.total = buf[0];
     msdc_config.threshold = buf[1];
     if (msdc_config.total > MSDC_MAX_MULTI_SIGNERS) {
+        ckb_debug("MSDC_TOO_MANY_SIGNERS 41\n");
         return MSDC_TOO_MANY_SIGNERS;
     }
     for (int i = 0; i < msdc_config.total; i++) {
@@ -46,6 +50,7 @@ static int msdc_parse_config() {
 static int msdc_verify() {
     int ok_count = 0;
     int ret;
+    ckb_debug("Enter msdc_verify\n");
     for (int i = 0; i < msdc_config.total; i++) {
         ret = verify_sighash_all((char *)msdc_config.blake160s[i], i);
         if (ret == CKB_SUCCESS) {
@@ -54,6 +59,7 @@ static int msdc_verify() {
     }
 
     if (ok_count < msdc_config.threshold) {
+        ckb_debug("MSDS_VERIFICATION_FAILED 62\n");
         return MSDS_VERIFICATION_FAILED;
     }
     return 0;

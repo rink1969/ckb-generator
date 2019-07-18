@@ -99,14 +99,18 @@ static int verify_sighash_all(char* blake160, size_t n)
   ns(Witness_table_t) witness_table;
   ns(Bytes_vec_t) args;
 
+  ckb_debug("Enter verify_sighash_all\n");
+
   secp256k1_context context;
   if (secp256k1_context_initialize(&context, SECP256K1_CONTEXT_VERIFY) == 0) {
+    ckb_debug("ERROR_SECP_INITIALIZE 106\n");
     return ERROR_SECP_INITIALIZE;
   }
 
   len = BLAKE2B_BLOCK_SIZE;
   ret = ckb_load_tx_hash(tx_hash, &len, 0);
   if (ret != CKB_SUCCESS) {
+    ckb_debug("ERROR_SYSCALL 113\n");
     return ERROR_SYSCALL;
   }
 
@@ -125,6 +129,7 @@ static int verify_sighash_all(char* blake160, size_t n)
       return 0;
     }
     if (ret != CKB_SUCCESS) {
+      ckb_debug("ERROR_SYSCALL 132\n");
       return ERROR_SYSCALL;
     }
 
@@ -132,15 +137,18 @@ static int verify_sighash_all(char* blake160, size_t n)
     len = WITNESS_SIZE;
     ret = ckb_load_witness(witness, &len, 0, index, CKB_SOURCE_GROUP_INPUT);
     if (ret != CKB_SUCCESS) {
+      ckb_debug("ERROR_SYSCALL 140\n");
       return ERROR_SYSCALL;
     }
 
     if (!(witness_table = ns(Witness_as_root(witness)))) {
+      ckb_debug("ERROR_ENCODING 145\n");
       return ERROR_ENCODING;
     }
 
     args = ns(Witness_data(witness_table));
     if (ns(Bytes_vec_len(args)) < 1) {
+      ckb_debug("ERROR_WRONG_NUMBER_OF_ARGUMENTS 151\n");
       return ERROR_WRONG_NUMBER_OF_ARGUMENTS;
     }
 
@@ -148,6 +156,7 @@ static int verify_sighash_all(char* blake160, size_t n)
     len = TEMP_SIZE;
     ret = extract_bytes(ns(Bytes_vec_at(args, 0 + n)), temp, &len);
     if (ret != CKB_SUCCESS) {
+      ckb_debug("ERROR_ENCODING 159\n");
       return ERROR_ENCODING;
     }
 
@@ -156,6 +165,7 @@ static int verify_sighash_all(char* blake160, size_t n)
     /* Recover pubkey */
     secp256k1_ecdsa_recoverable_signature signature;
     if (secp256k1_ecdsa_recoverable_signature_parse_compact(&context, &signature, temp, recid) == 0) {
+      ckb_debug("ERROR_SECP_PARSE_SIGNATURE 168\n");
       return ERROR_SECP_PARSE_SIGNATURE;
     }
     blake2b_state blake2b_ctx;
@@ -167,12 +177,14 @@ static int verify_sighash_all(char* blake160, size_t n)
     secp256k1_pubkey pubkey;
 
     if (secp256k1_ecdsa_recover(&context, &pubkey, &signature, temp) != 1) {
+      ckb_debug("ERROR_SECP_RECOVER_PUBKEY 180\n");
       return ERROR_SECP_RECOVER_PUBKEY;
     }
 
     /* Check pubkey hash */
     size_t pubkey_size = PUBKEY_SIZE;
     if (secp256k1_ec_pubkey_serialize(&context, temp, &pubkey_size, &pubkey, SECP256K1_EC_COMPRESSED) != 1 ) {
+      ckb_debug("ERROR_SECP_SERIALIZE_PUBKEY 187\n");
       return ERROR_SECP_SERIALIZE_PUBKEY;
     }
 
@@ -182,11 +194,13 @@ static int verify_sighash_all(char* blake160, size_t n)
     blake2b_final(&blake2b_ctx, temp, BLAKE2B_BLOCK_SIZE);
 
     if (memcmp(blake160, temp, BLAKE160_SIZE) != 0) {
+      ckb_debug("ERROR_PUBKEY_BLAKE160_HASH 197\n");
       return ERROR_PUBKEY_BLAKE160_HASH;
     }
 
     index += 1;
   }
+  ckb_debug("ERROR_UNKNOWN 203\n");
   return ERROR_UNKNOWN;
 }
 #endif

@@ -98,23 +98,23 @@ type ContractST = State (Expr, Int)
 -- util for interpreter
 nopExpr = LitInt 0
 nopFunc :: (Expr, Int) -> (Expr, Int)
-nopFunc (expr, 0) = (BinaryOp LOr nopExpr expr, initFlag)
-nopFunc (expr, 1) = (BinaryOp LAnd nopExpr expr, initFlag)
+nopFunc (expr, 0) = (BinaryOp LOr expr nopExpr, initFlag)
+nopFunc (expr, 1) = (BinaryOp LAnd expr nopExpr, initFlag)
 
 updateCellExpr = Funcall (Ident "verify_sighash_all") [Index (Ident "argv") (LitInt 0), LitInt 0]
 updataCellFunc :: (Expr, Int) -> (Expr, Int)
-updataCellFunc (expr, 0) = (BinaryOp LOr updateCellExpr expr, initFlag)
-updataCellFunc (expr, 1) = (BinaryOp LAnd updateCellExpr expr, initFlag)
+updataCellFunc (expr, 0) = (BinaryOp LOr expr updateCellExpr, initFlag)
+updataCellFunc (expr, 1) = (BinaryOp LAnd expr updateCellExpr, initFlag)
 
 binaryVoteExpr = Funcall (Ident "verify_binary_vote") []
 binaryVoteFunc :: (Expr, Int) -> (Expr, Int)
-binaryVoteFunc (expr, 0) = (BinaryOp LOr binaryVoteExpr expr, initFlag)
-binaryVoteFunc (expr, 1) = (BinaryOp LAnd binaryVoteExpr expr, initFlag)
+binaryVoteFunc (expr, 0) = (BinaryOp LOr expr binaryVoteExpr, initFlag)
+binaryVoteFunc (expr, 1) = (BinaryOp LAnd expr binaryVoteExpr, initFlag)
 
 multiSigDataExpr = Funcall (Ident "mdsc_run") []
 multiSigDataFunc :: (Expr, Int) -> (Expr, Int)
-multiSigDataFunc (expr, 0) = (BinaryOp LOr multiSigDataExpr expr, initFlag)
-multiSigDataFunc (expr, 1) = (BinaryOp LAnd multiSigDataExpr expr, initFlag)
+multiSigDataFunc (expr, 0) = (BinaryOp LOr expr multiSigDataExpr, initFlag)
+multiSigDataFunc (expr, 1) = (BinaryOp LAnd expr multiSigDataExpr, initFlag)
 
 andFunc :: (Expr, Int) -> (Expr, Int)
 andFunc (expr, _) = (expr, 0)

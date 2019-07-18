@@ -18,6 +18,8 @@ static int verify_binary_vote() {
     char buf[TEMP_SIZE];
     int ret;
 
+    ckb_debug("Enter verify_binary_vote\n");
+
     while (1) {
         volatile uint64_t len = TEMP_SIZE;
         ret = ckb_load_cell_by_field(buf, &len, 0, i, CKB_SOURCE_INPUT, CKB_CELL_FIELD_DATA);
@@ -25,6 +27,7 @@ static int verify_binary_vote() {
             break;
         }
         if (ret != CKB_SUCCESS) {
+            ckb_debug("error 30\n");
             return ret;
         }
         total++;
@@ -37,15 +40,18 @@ static int verify_binary_vote() {
     {
         volatile uint64_t len = TEMP_SIZE;
         if (ckb_load_cell_by_field(buf, &len, 0, 0, CKB_SOURCE_OUTPUT, CKB_CELL_FIELD_DATA) != CKB_SUCCESS) {
+          ckb_debug("BV_LOAD_OUTPUT_DATA_ERROR 43\n");
           return BV_LOAD_OUTPUT_DATA_ERROR;
         }
         if (len != 2) {
+          ckb_debug("BV_SUMMARY_LEN_ERROR 47\n");
           return BV_SUMMARY_LEN_ERROR;
         }
     }
     int summary_total = buf[0];
     int summary_yes = buf[1];
     if ((summary_total != total) || (summary_yes != yes)) {
+        ckb_debug("BV_SUMMARY_ERROR 54\n");
         return BV_SUMMARY_ERROR;
     }
 

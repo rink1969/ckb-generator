@@ -18,10 +18,10 @@ vote_name = "vote"
 
 vote_lock_script :: LockScript ()
 vote_lock_script = do
-  lockOperatorUpdateCell
   lockOperatorMultiSigData
   lockOperatorAnd
   lockOperatorBinaryVote
+  lockOperatorUpdateCell
 
 -- vote config for mutil-signatures
 voter1 = "4a88cef22e4e71c48c40da51c1d6bd16daa97aa7"
