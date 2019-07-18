@@ -54,7 +54,6 @@ library
                  , LockScript
                  , CodeGen
                  , Dapp.Util
-                 , Dapp.SystemScript
                  , Dapp.AlwaysSuccess
                  , Dapp.Vote
 

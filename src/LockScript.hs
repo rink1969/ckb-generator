@@ -16,9 +16,15 @@ import qualified Data.ByteString.Char8 as CB
 import qualified Data.ByteString as BS
 import qualified Data.Text as T
 
+import Control.Lens (set)
+
 -- define of DSL
 data LockOperator tx next =
-  Nop next
+  LockOperatorNop next
+  | LockOperatorUpdateCell next
+  | LockOperatorBinaryVote next
+  | LockOperatorMultiSigData next
+  --LockOperatorOr ()
   deriving (Functor)
 
 makeFree ''LockOperator
@@ -43,13 +49,43 @@ mkMultiSigConfig path total threshold args =  BS.writeFile path bs where
   config = MultiSigConfig wtotal wthreshold wargs
   bs = BS.pack ([multi_sig_total config] <> [multi_sig_threshold config] <> (concat $ multi_sig_args config))
 
+processBinaryVote :: ResolvedTransaction -> ResolvedTransaction
+processBinaryVote rtx = ResolvedTransaction new_tx [] [] LockScriptNeedMultiSig where
+  tx = _resolved_transaction_tx rtx
+  cs = _resolved_transaction_inputs rtx
+  data_lens = map (length . _output_data. cell_with_status_cell) cs
+  total = length data_lens
+  yes = length $ filter (> 2) data_lens
+  output_data = T.unpack $ toText $ fromBinary ((fromIntegral total) :: Word8, (fromIntegral yes) :: Word8)
+  output_cap = foldl (+) 0 (map ((read :: String -> Int) . _output_capacity. cell_with_status_cell) cs)
+  output_script = fetchOldOutputScript rtx
+  new_output = Output (show output_cap) ("0x" <> output_data) output_script Nothing
+  new_tx = set transaction_outputs [new_output] tx
+
+processUpdateCell :: ResolvedTransaction -> ResolvedTransaction
+processUpdateCell rtx = ResolvedTransaction tx [] [] LockScriptSystemSign where
+  tx = _resolved_transaction_tx rtx
+
+processMultiSigData :: ResolvedTransaction -> ResolvedTransaction
+processMultiSigData rtx = ResolvedTransaction tx [] [] LockScriptNeedMultiSig where
+  tx = _resolved_transaction_tx rtx
+
 -- lock script interpreter: translate DSL code to lock process
 -- type of eval result
 type LockST = State ResolvedTransaction
 
 lockInterpreter :: ScriptOperator (LockST next) -> LockST next
-lockInterpreter (Nop next) = do
+lockInterpreter (LockOperatorNop next) = do
   modify id
+  next
+lockInterpreter (LockOperatorUpdateCell next) = do
+  modify processUpdateCell
+  next
+lockInterpreter (LockOperatorBinaryVote next) = do
+  modify processBinaryVote
+  next
+lockInterpreter (LockOperatorMultiSigData next) = do
+  modify processMultiSigData
   next
 
 
@@ -58,6 +94,15 @@ lockInterpreter (Nop next) = do
 type ContractST = State [Stmt]
 
 contractInterpreter :: ScriptOperator (ContractST next) -> ContractST next
-contractInterpreter (Nop next) = do
-  modify ((Return $ Just (LitInt 0)) :)
+contractInterpreter (LockOperatorNop next) = do
+  modify ((Expr $ AssignOp Assign (Ident "ret") (LitInt 0)) :)
+  next
+contractInterpreter (LockOperatorUpdateCell next) = do
+  modify ((Expr $ AssignOp Assign (Ident "ret") (BinaryOp LOr (Ident "ret") (Funcall (Ident "verify_sighash_all") [Index (Ident "argv") (LitInt 0), LitInt 0]))) :)
+  next
+contractInterpreter (LockOperatorBinaryVote next) = do
+  modify ((Expr $ AssignOp Assign (Ident "ret") (BinaryOp LOr (Ident "ret") (Funcall (Ident "verify_binary_vote") []))) :)
+  next
+contractInterpreter (LockOperatorMultiSigData next) = do
+  modify ((Expr $ AssignOp Assign (Ident "ret") (BinaryOp LOr (Ident "ret") (Funcall (Ident "mdsc_run") []))) :)
   next

@@ -3,6 +3,8 @@ module Dapp.Util where
 import Type
 import EDSL
 
+import Control.Lens (set)
+
 -- util code for DSL
 userInfo :: Dapp UserInfo
 userInfo = do
@@ -28,7 +30,7 @@ deploy = do
   path <- ask "contract path"
   deployContract (userinfo, path)
 
-resolveTx :: ContractCmd -> Transaction -> Dapp ResolvedTransaction
+resolveTx :: LockScriptCmd -> Transaction -> Dapp ResolvedTransaction
 resolveTx cmd tx = do
   let deps = _transaction_deps tx
   resolved_deps <- mapM (getLiveCellByTxHashIndex . outPoint2Tuple) deps
@@ -44,8 +46,8 @@ gatherArgs init_args = do
     arg -> gatherArgs (init_args ++ [arg])
 
 
-transferCapacity :: ContractCmd -> DappInfo -> DappInfo -> Dapp Hash
-transferCapacity cmd from to = do
+transferCapacity :: DappInfo -> DappInfo -> Dapp Hash
+transferCapacity from to = do
   key <- ask "Please input sender user privkey:"
   from_user_info <- getUserInfo key
   args <- gatherArgs []
@@ -69,12 +71,16 @@ transferCapacity cmd from to = do
   case maybe_lock_func of
     Nothing -> sendTransaction (from_user_info, tx)
     Just lock_func -> do
-      init_rtx <- resolveTx cmd tx
+      init_rtx <- resolveTx LockScriptNeedSign tx
       let new_rtx = lock_func init_rtx
-      sendRawTransaction $ _resolved_transaction_tx new_rtx
+      case (_resolved_transaction_func new_rtx) of
+        LockScriptSystemSign -> do
+          tx <- system_script_lock $ _resolved_transaction_tx new_rtx
+          sendRawTransaction tx
+        LockScriptComplete -> sendRawTransaction $ _resolved_transaction_tx new_rtx
 
-updateCell :: (Output -> Output) -> ContractCmd ->  DappInfo-> Hash -> Index -> Dapp Hash
-updateCell func cmd info hash index = do
+updateCell :: (Output -> Output) ->  DappInfo-> Hash -> Index -> Dapp Hash
+updateCell func info hash index = do
   user_info <- userInfo
   c <- getLiveCellByTxHashIndex (hash, index)
   let output = cell_with_status_cell c
@@ -89,7 +95,23 @@ updateCell func cmd info hash index = do
   case maybe_lock_func of
     Nothing -> sendTransaction (user_info, tx)
     Just lock_func -> do
-      init_rtx <- resolveTx cmd tx
+      init_rtx <- resolveTx LockScriptNeedSign tx
       let new_rtx = lock_func init_rtx
-      sendRawTransaction $ _resolved_transaction_tx new_rtx
+      case (_resolved_transaction_func new_rtx) of
+        LockScriptSystemSign -> do
+          tx <- system_script_lock $ _resolved_transaction_tx new_rtx
+          sendRawTransaction tx
+        LockScriptComplete -> sendRawTransaction $ _resolved_transaction_tx new_rtx
 
+
+-- system script
+system_script_info :: Dapp DappInfo
+system_script_info = do
+  mkDappInfo ("system", Nothing)
+
+system_script_lock :: Transaction -> Dapp Transaction
+system_script_lock tx = do
+  user_info <- userInfo
+  witnesses <- sign (user_info, tx)
+  let stx = set transaction_witnesses witnesses tx
+  return stx

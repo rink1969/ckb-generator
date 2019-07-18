@@ -15,10 +15,10 @@
 #define MSDC_MAX_MULTI_SIGNERS 8
 #define MSDC_TEMP_SIZE 1024
 struct MSDC_Conifg {
-    uint8_t total,
-    uint8_t threshold,
-    uint8_t blake160s[MSDC_MAX_MULTI_SIGNERS][BLAKE160_SIZE]
-}
+    uint8_t total;
+    uint8_t threshold;
+    uint8_t blake160s[MSDC_MAX_MULTI_SIGNERS][BLAKE160_SIZE];
+};
 static struct MSDC_Conifg msdc_config;
 static int msdc_parse_config() {
     char buf[MSDC_TEMP_SIZE];
@@ -32,12 +32,12 @@ static int msdc_parse_config() {
             return MSDC_INVALID_CONFIG_DATA;
         }
     }
-    int msdc_config.total = buf[0];
-    int msdc_config.threshold = buf[1];
-    if (m > MSDC_MAX_MULTI_SIGNERS) {
+    msdc_config.total = buf[0];
+    msdc_config.threshold = buf[1];
+    if (msdc_config.total > MSDC_MAX_MULTI_SIGNERS) {
         return MSDC_TOO_MANY_SIGNERS;
     }
-    for (int i = 0; i < m; i++) {
+    for (int i = 0; i < msdc_config.total; i++) {
         memcpy(msdc_config.blake160s[i], &buf[2 + i * BLAKE160_SIZE], BLAKE160_SIZE);
     }
     return 0;
@@ -45,8 +45,9 @@ static int msdc_parse_config() {
 
 static int msdc_verify() {
     int ok_count = 0;
+    int ret;
     for (int i = 0; i < msdc_config.total; i++) {
-        ret = verify_sighash_all(msdc_config.blake160s[i], i);
+        ret = verify_sighash_all((char *)msdc_config.blake160s[i], i);
         if (ret == CKB_SUCCESS) {
             ok_count += 1;
         }

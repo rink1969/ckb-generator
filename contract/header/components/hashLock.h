@@ -11,7 +11,8 @@
 #define HL_LOCK_HASH_IMAGE_ERROR HASHLOCK_ERROR + 3
 
 static int verify_hash_lock(char* argv[]) {
-    char char buf[TEMP_SIZE];
+    char buf[TEMP_SIZE];
+    int ret;
     // unlock
     // arg[1] is sender
     // arg[2] is receiver
@@ -25,7 +26,7 @@ static int verify_hash_lock(char* argv[]) {
 
     {
         volatile uint64_t len = TEMP_SIZE;
-        if (ckb_load_cell_by_field(g_buf, &len, 0, 0, CKB_SOURCE_OUTPUT, CKB_CELL_FIELD_DATA) != CKB_SUCCESS) {
+        if (ckb_load_cell_by_field(buf, &len, 0, 0, CKB_SOURCE_OUTPUT, CKB_CELL_FIELD_DATA) != CKB_SUCCESS) {
           return HL_LOAD_DATA_ERROR;
         }
         if (len != 32) {

@@ -17,7 +17,6 @@ type Index = String
 type Since = String
 type Status = String
 type Version = String
-type ContractCmd = String
 
 
 -- data type from ckb
@@ -186,11 +185,18 @@ instance FromJSON CellWithStatus where
   parseJSON = genericParseJSON defaultOptions {
                 fieldLabelModifier = drop $ length "cell_with_status_" }
 
+data LockScriptCmd = LockScriptComplete
+  | LockScriptNeedSign
+  | LockScriptSystemSign
+  | LockScriptNeedMultiSig
+  | LockScriptOther String
+  deriving (Generic, Show)
+
 data ResolvedTransaction = ResolvedTransaction
   { _resolved_transaction_tx :: Transaction
   , _resolved_transaction_deps :: [CellWithStatus]
   , _resolved_transaction_inputs :: [CellWithStatus]
-  , _resolved_transaction_func :: Name
+  , _resolved_transaction_func :: LockScriptCmd
   } deriving (Generic, Show)
 
 makeLenses ''ResolvedTransaction
@@ -245,3 +251,7 @@ mergeTransactions txs = do
 
 updateOutputData :: Data -> Output -> Output
 updateOutputData new_data old_output = set output_data new_data old_output
+
+fetchOldOutputScript :: ResolvedTransaction -> Script
+fetchOldOutputScript rtx = _output_lock old_output where
+  old_output = (_transaction_outputs $ _resolved_transaction_tx rtx) !! 0

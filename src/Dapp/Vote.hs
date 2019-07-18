@@ -4,7 +4,6 @@ import Type
 import EDSL
 import LockScript
 import Dapp.Util
-import Dapp.SystemScript
 import Call
 
 import Control.Monad.Trans.Maybe (runMaybeT)
@@ -19,7 +18,10 @@ vote_name = "vote"
 
 vote_lock_script :: LockScript ()
 vote_lock_script = do
-  nop
+  lockOperatorUpdateCell
+  lockOperatorMultiSigData
+  lockOperatorBinaryVote
+
 
 -- vote config for mutil-signatures
 voter1 = "4a88cef22e4e71c48c40da51c1d6bd16daa97aa7"
@@ -48,23 +50,9 @@ sumVotes hashes vote_info config_info system_info arg = do
   let output_script = Script (contract_info_code_hash $ dapp_contract_info system_info) [arg]
   let outputs = [Output "0" "0x" output_script Nothing]
   let tx = Transaction "0x" "0" deps inputs outputs (fake_witness $ length inputs)
-  rtx <- resolveTx "sum" tx
+  rtx <- resolveTx (LockScriptOther "sum") tx
   let Just lock_func = dapp_lock_func vote_info
   return $ lock_func rtx
-
-{-
-  cs <- mapM getLiveCellByTxHashIndex (zip hashes (repeat "0"))
-  let data_lens = map (length . _output_data. cell_with_status_cell) cs
-  let total = length data_lens
-  let yes = length $ filter (> 2) data_lens
-  let output_data = T.unpack $ toText $ fromBinary ((fromIntegral total) :: Word8, (fromIntegral yes) :: Word8)
-  let output_cap = foldl (+) 0 (map ((read :: String -> Int) . _output_capacity. cell_with_status_cell) cs)
-  system_script_info <- system_script
-  let output_script = Script (contract_info_code_hash system_script_info) [arg]
-  let outputs = [Output (show output_cap) ("0x" <> output_data) output_script Nothing]
-  let tx = Transaction "0x" "0" deps inputs outputs (fake_witness $ length inputs)
-  system_script_lock user_info tx
--}
 
 vote_dapp :: Dapp Hash
 vote_dapp = do
@@ -75,14 +63,14 @@ vote_dapp = do
   vote_info <- mkDappInfo (vote_name, Just vote_lock_script)
   ask "Begin to vote!\nEmpty data means No, otherwise Yse!\nPress Enter to continue..."
   ask "Voter1 ready to vote!\nPress Enter to continue..."
-  vote1_hash <- transferCapacity "" system_info vote_info
+  vote1_hash <- transferCapacity system_info vote_info
   ask "Voter2 ready to vote!\nPress Enter to continue..."
-  vote2_hash <- transferCapacity "" system_info vote_info
+  vote2_hash <- transferCapacity system_info vote_info
   ask "Voter3 ready to vote!\nPress Enter to continue..."
-  vote3_hash <- transferCapacity "" system_info vote_info
+  vote3_hash <- transferCapacity system_info vote_info
   ask "Voter1 want to modify his vote\nPress Enter to continue..."
   new_data <- ask "input new vote data:"
-  vote1_hash <- updateCell (updateOutputData new_data) "revote" vote_info vote1_hash "0"
+  vote1_hash <- updateCell (updateOutputData new_data) vote_info vote1_hash "0"
   ask "Gather all vote tx hashes and begin to sum votes\nPress Enter to continue..."
   sum_rtx <- sumVotes [vote1_hash, vote2_hash, vote3_hash] vote_info config_info system_info admin
   let sum_tx = _resolved_transaction_tx sum_rtx
