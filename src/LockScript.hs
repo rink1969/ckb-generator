@@ -101,7 +101,7 @@ nopFunc :: (Expr, Int) -> (Expr, Int)
 nopFunc (expr, 0) = (BinaryOp LOr expr nopExpr, initFlag)
 nopFunc (expr, 1) = (BinaryOp LAnd expr nopExpr, initFlag)
 
-updateCellExpr = Funcall (Ident "verify_sighash_all") [Index (Ident "argv") (LitInt 0), LitInt 0]
+updateCellExpr = Funcall (Ident "verify_sighash_all") [Index (Ident "argv") (LitInt 1), LitInt 0]
 updataCellFunc :: (Expr, Int) -> (Expr, Int)
 updataCellFunc (expr, 0) = (BinaryOp LOr expr updateCellExpr, initFlag)
 updataCellFunc (expr, 1) = (BinaryOp LAnd expr updateCellExpr, initFlag)

@@ -154,7 +154,7 @@ static int verify_sighash_all(char* blake160, size_t n)
 
     /* Check pubkey hash */
     len = TEMP_SIZE;
-    ret = extract_bytes(ns(Bytes_vec_at(args, 0 + n)), temp, &len);
+    ret = extract_bytes(ns(Bytes_vec_at(args, n)), temp, &len);
     if (ret != CKB_SUCCESS) {
       ckb_debug("ERROR_ENCODING 159\n");
       return ERROR_ENCODING;
