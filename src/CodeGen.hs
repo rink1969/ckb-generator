@@ -9,9 +9,9 @@ import Language.C99.Pretty  (pretty)
 import Language.C99.Simple
 
 
--- mainFunc = FunDef (TypeSpec Int) "main" [Param (TypeSpec Int) "argc", Param (Array (Ptr (TypeSpec Char)) Nothing) "argv"] [] [Return $ Just (LitInt 0)]
+initValueGenCode = LitInt 1;
+initFlag = 1 :: Int;
 
--- printMain = render $ pretty $ translate $ TransUnit [] [mainFunc]
 retDecl = VarDecln Nothing (TypeSpec Int) "ret" (Just $ InitExpr $ LitInt 0)
 includes = unlines [ "#include <script.h>"
                    , "#include \"components/witnessCount.h\""
@@ -20,9 +20,8 @@ includes = unlines [ "#include <script.h>"
                    , "#include \"components/multiSignatures_data_config.h\""
                    , "#include \"components/multiSignatures_argv.h\""]
 
-genCode stmts = includes <> code where
-  new_stmts = reverse $ (Return $ Just (Ident "ret")) : stmts
-  mainFunc = FunDef (TypeSpec Int) "main" [Param (TypeSpec Int) "argc", Param (Array (Ptr (TypeSpec Char)) Nothing) "argv"] [] new_stmts
-  code = render $ pretty $ translate $ TransUnit [retDecl] [mainFunc]
+genCode expr = includes <> code where
+  mainFunc = FunDef (TypeSpec Int) "main" [Param (TypeSpec Int) "argc", Param (Array (Ptr (TypeSpec Char)) Nothing) "argv"] [] [Return $ Just expr]
+  code = render $ pretty $ translate $ TransUnit [] [mainFunc]
 
-testGenCode = genCode [Expr $ AssignOp Assign (Ident "ret") (BinaryOp LOr (Ident "ret") (Funcall (Ident "verify_sighash_all") [Index (Ident "argv") (LitInt 0), LitInt 0]))]
+testGenCode = genCode (BinaryOp LOr (Funcall (Ident "verify_sighash_all") [Index (Ident "argv") (LitInt 0), LitInt 0]) (LitInt 0))

@@ -2,6 +2,7 @@
 module LockScript where
 
 import Type
+import CodeGen (initFlag)
 
 import Language.C99.Simple
 
@@ -19,16 +20,17 @@ import qualified Data.Text as T
 import Control.Lens (set)
 
 -- define of DSL
-data LockOperator tx next =
+data LockOperator next =
   LockOperatorNop next
   | LockOperatorUpdateCell next
   | LockOperatorBinaryVote next
   | LockOperatorMultiSigData next
+  | LockOperatorAnd next
   deriving (Functor)
 
 makeFree ''LockOperator
 
-type ScriptOperator = LockOperator ResolvedTransaction
+type ScriptOperator = LockOperator
 
 type LockScript = Free ScriptOperator
 
@@ -58,12 +60,15 @@ processBinaryVote (ResolvedTransaction tx deps inputs LockScriptBinaryVote) = Re
   output_script = fetchOldOutputScript tx
   new_output = Output (show output_cap) ("0x" <> output_data) output_script Nothing
   new_tx = set transaction_outputs [new_output] tx
+processBinaryVote rtx = rtx
 
 processUpdateCell :: ResolvedTransaction -> ResolvedTransaction
 processUpdateCell (ResolvedTransaction tx _ _ LockScriptUpdateCell) = ResolvedTransaction tx [] [] LockScriptSystemLock
+processUpdateCell rtx = rtx
 
 processMultiSigData :: ResolvedTransaction -> ResolvedTransaction
 processMultiSigData (ResolvedTransaction tx _ _ LockScriptMultiSigData) = ResolvedTransaction tx [] [] LockScriptMultiSig
+processMultiSigData rtx = rtx
 
 -- lock script interpreter: translate DSL code to lock process
 -- type of eval result
@@ -82,21 +87,51 @@ lockInterpreter (LockOperatorBinaryVote next) = do
 lockInterpreter (LockOperatorMultiSigData next) = do
   modify processMultiSigData
   next
-
+lockInterpreter (LockOperatorAnd next) = do
+  modify processMultiSigData
+  next
 
 -- contract interpreter: translate DSL code to c code
 -- type of eval result
-type ContractST = State [Stmt]
+type ContractST = State (Expr, Int)
+
+-- util for interpreter
+nopExpr = LitInt 0
+nopFunc :: (Expr, Int) -> (Expr, Int)
+nopFunc (expr, 0) = (BinaryOp LOr nopExpr expr, initFlag)
+nopFunc (expr, 1) = (BinaryOp LAnd nopExpr expr, initFlag)
+
+updateCellExpr = Funcall (Ident "verify_sighash_all") [Index (Ident "argv") (LitInt 0), LitInt 0]
+updataCellFunc :: (Expr, Int) -> (Expr, Int)
+updataCellFunc (expr, 0) = (BinaryOp LOr updateCellExpr expr, initFlag)
+updataCellFunc (expr, 1) = (BinaryOp LAnd updateCellExpr expr, initFlag)
+
+binaryVoteExpr = Funcall (Ident "verify_binary_vote") []
+binaryVoteFunc :: (Expr, Int) -> (Expr, Int)
+binaryVoteFunc (expr, 0) = (BinaryOp LOr binaryVoteExpr expr, initFlag)
+binaryVoteFunc (expr, 1) = (BinaryOp LAnd binaryVoteExpr expr, initFlag)
+
+multiSigDataExpr = Funcall (Ident "mdsc_run") []
+multiSigDataFunc :: (Expr, Int) -> (Expr, Int)
+multiSigDataFunc (expr, 0) = (BinaryOp LOr multiSigDataExpr expr, initFlag)
+multiSigDataFunc (expr, 1) = (BinaryOp LAnd multiSigDataExpr expr, initFlag)
+
+andFunc :: (Expr, Int) -> (Expr, Int)
+andFunc (expr, _) = (expr, 0)
 
 contractInterpreter :: ScriptOperator (ContractST next) -> ContractST next
 contractInterpreter (LockOperatorNop next) = do
+  modify nopFunc
   next
 contractInterpreter (LockOperatorUpdateCell next) = do
-  modify ((Expr $ AssignOp Assign (Ident "ret") (BinaryOp LOr (Ident "ret") (Funcall (Ident "verify_sighash_all") [Index (Ident "argv") (LitInt 0), LitInt 0]))) :)
+  modify updataCellFunc
   next
 contractInterpreter (LockOperatorBinaryVote next) = do
-  modify ((Expr $ AssignOp Assign (Ident "ret") (BinaryOp LOr (Ident "ret") (Funcall (Ident "verify_binary_vote") []))) :)
+  modify binaryVoteFunc
   next
 contractInterpreter (LockOperatorMultiSigData next) = do
-  modify ((Expr $ AssignOp Assign (Ident "ret") (BinaryOp LOr (Ident "ret") (Funcall (Ident "mdsc_run") []))) :)
+  modify multiSigDataFunc
+  next
+contractInterpreter (LockOperatorAnd next) = do
+  modify andFunc
   next

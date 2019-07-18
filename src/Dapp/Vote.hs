@@ -19,8 +19,9 @@ vote_name = "vote"
 vote_lock_script :: LockScript ()
 vote_lock_script = do
   lockOperatorUpdateCell
-  --lockOperatorAnd lockOperatorMultiSigData lockOperatorBinaryVote
-
+  lockOperatorMultiSigData
+  lockOperatorAnd
+  lockOperatorBinaryVote
 
 -- vote config for mutil-signatures
 voter1 = "4a88cef22e4e71c48c40da51c1d6bd16daa97aa7"
@@ -56,9 +57,10 @@ sumVotes hashes vote_info config_info system_info arg = do
 vote_dapp :: Dapp Hash
 vote_dapp = do
   ask "Begin to run Dapp vote!\nPress Enter to continue..."
-  ask "At first deploy config data (Make sure has run buildConfigData)\nPress Enter to continue..."
+  ask "Deploy config data (Make sure has run buildConfigData)\nPress Enter to continue..."
   config_info <- deployConfigData
   system_info <- system_script_info
+  ask "Deploy contract vote\nPress Enter to continue..."
   vote_info <- mkDappInfo (vote_name, Just vote_lock_script)
   ask "Begin to vote!\nEmpty data means No, otherwise Yse!\nPress Enter to continue..."
   ask "Voter1 ready to vote!\nPress Enter to continue..."
@@ -69,7 +71,7 @@ vote_dapp = do
   vote3_hash <- transferCapacity system_info vote_info
   ask "Voter1 want to modify his vote\nPress Enter to continue..."
   new_data <- ask "input new vote data:"
-  vote1_hash <- updateCell (updateOutputData new_data) vote_info vote1_hash "0"
+  vote1_hash <- updateCell (updateOutputData ("0x" <> new_data)) vote_info vote1_hash "0"
   ask "Gather all vote tx hashes and begin to sum votes\nPress Enter to continue..."
   sum_rtx <- sumVotes [vote1_hash, vote2_hash, vote3_hash] vote_info config_info system_info admin
   let sum_tx = _resolved_transaction_tx sum_rtx

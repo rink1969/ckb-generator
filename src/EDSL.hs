@@ -66,8 +66,8 @@ call_ruby func args = do
 
 gen_contract :: Name -> LockScript () -> IO ()
 gen_contract name lock_script = do
-  let stmts = execState (iterM contractInterpreter $ lock_script) []
-  let code = genCode stmts
+  let (expr, _) = execState (iterM contractInterpreter $ lock_script) (initValueGenCode, initFlag)
+  let code = genCode expr
   path <- source_abs_path name
   writeFile path code
 
