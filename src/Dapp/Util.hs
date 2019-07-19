@@ -81,7 +81,6 @@ transferCapacity from to = do
 
 updateCell :: (Output -> Output) ->  DappInfo-> Hash -> Index -> Dapp Hash
 updateCell func info hash index = do
-  user_info <- userInfo
   c <- getLiveCellByTxHashIndex (hash, index)
   let output = cell_with_status_cell c
   let new_output = func output
@@ -93,7 +92,9 @@ updateCell func info hash index = do
   let tx = Transaction "0x" "0" deps inputs outputs (fake_witness $ length inputs)
   let maybe_lock_func = dapp_lock_func info
   case maybe_lock_func of
-    Nothing -> sendTransaction (user_info, tx)
+    Nothing -> do
+      stx <- system_script_lock tx
+      sendRawTransaction stx
     Just lock_func -> do
       init_rtx <- resolveTx LockScriptUpdateCell tx
       let new_rtx = lock_func init_rtx

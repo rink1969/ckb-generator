@@ -56,31 +56,31 @@ sumVotes hashes vote_info config_info system_info arg = do
 
 vote_dapp :: Dapp Hash
 vote_dapp = do
-  ask "Begin to run Dapp vote!\nPress Enter to continue..."
-  ask "Deploy config data (Make sure has run buildConfigData)\nPress Enter to continue..."
+  display "Begin to run Dapp vote!"
+  display "Deploy config data (Make sure has run buildConfigData)"
   config_info <- deployConfigData
   system_info <- system_script_info
-  ask "Deploy contract vote\nPress Enter to continue..."
+  display "Deploy contract vote"
   vote_info <- mkDappInfo (vote_name, Just vote_lock_script)
-  ask "Begin to vote!\nEmpty data means No, otherwise Yse!\nPress Enter to continue..."
-  ask "Voter1 ready to vote!\nPress Enter to continue..."
+  display "Begin to vote!\nEmpty data means No, otherwise Yse!"
+  display "Voter1 ready to vote!"
   vote1_hash <- transferCapacity system_info vote_info
-  ask "Voter2 ready to vote!\nPress Enter to continue..."
+  display "Voter2 ready to vote!"
   vote2_hash <- transferCapacity system_info vote_info
-  ask "Voter3 ready to vote!\nPress Enter to continue..."
+  display "Voter3 ready to vote!"
   vote3_hash <- transferCapacity system_info vote_info
-  ask "Voter1 want to modify his vote\nPress Enter to continue..."
+  display "Voter1 want to modify his vote!"
   new_data <- ask "input new vote data:"
   vote1_hash <- updateCell (updateOutputData ("0x" <> new_data)) vote_info vote1_hash "0"
-  ask "Gather all vote tx hashes and begin to sum votes\nPress Enter to continue..."
+  display "Gather all vote tx hashes and begin to sum votes!"
   sum_rtx <- sumVotes [vote1_hash, vote2_hash, vote3_hash] vote_info config_info system_info admin
   let sum_tx = _resolved_transaction_tx sum_rtx
-  ask "We need complete Multi-Signatures\nPress Enter to continue..."
-  ask "Voter1 sign for sum_tx!\nPress Enter to continue..."
+  display "We need complete Multi-Signatures!"
+  display "Voter1 sign for sum_tx!"
   stx1 <- system_script_lock sum_tx
-  ask "Voter2 sign for sum_tx!\nPress Enter to continue..."
+  display "Voter2 sign for sum_tx!"
   stx2 <- system_script_lock sum_tx
-  ask "Voter3 sign for sum_tx!\nPress Enter to continue..."
+  display "Voter3 sign for sum_tx!"
   stx3 <- system_script_lock sum_tx
   let mstx = mergeTransactions [stx1, stx2, stx3]
   sendRawTransaction mstx

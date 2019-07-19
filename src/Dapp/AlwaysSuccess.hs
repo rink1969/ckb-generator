@@ -28,12 +28,13 @@ loop info prehash = do
 
 always_success_dapp :: Dapp Hash
 always_success_dapp = do
-  ask "Begin to run Dapp always_sucess!\nPress Enter to continue..."
-  system_info <- system_script_info
+  display "Begin to run Dapp always_sucess!"
+  display "Deploy contract always_success!"
   always_success_info <- mkDappInfo (always_success_name, Just always_success_lock_script)
-  ask "Move some capacity from system_script to contract always_sucess!\nPress Enter to continue..."
+  system_info <- system_script_info
+  display "Move some capacity from system_script to contract always_sucess!"
   prehash <- transferCapacity system_info always_success_info
-  ask "Start loop call contract always_sucess!\nPress Enter to continue..."
+  display "Start loop call contract always_sucess!"
   loop always_success_info prehash
 
 -- run dapp write by DSL

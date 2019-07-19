@@ -35,6 +35,7 @@ data Operator next =
   | SendTransaction (UserInfo, Transaction) (Hash -> next)
   | SendRawTransaction Transaction (Hash -> next)
   | Ask String (String -> next)
+  | Display String next
   | MkDappInfo (Name, Maybe (LockScript())) (DappInfo -> next)
   deriving (Functor)
 
@@ -105,6 +106,9 @@ clientInterpreter (Ask prompt next) = do
   liftIO $ putStrLn prompt
   something <- liftIO $ getLine
   next something
+clientInterpreter (Display msg next) = do
+  liftIO $ putStrLn msg
+  next
 clientInterpreter (SystemScript next) = do
   ret <- call_ruby "systemScript" []
   next ret
