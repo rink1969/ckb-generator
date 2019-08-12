@@ -57,12 +57,11 @@ transferCapacity from to = do
   let input_capacity_s = ret_queryLiveCells_capacity ret
   let input_capacity = read input_capacity_s :: Int
   let inputs = ret_queryLiveCells_inputs ret
-  let script = Script (contract_info_code_hash $ dapp_contract_info to) args
-  let lock_output = Output (show cap) ("0x" <> output_data) script Nothing
-  let outputs = [lock_output]
+  let script = Script (contract_info_code_hash $ dapp_contract_info to) args "Data"
+  let lock_output = Output (show cap) ("0x" <> output_data) script Nothing Nothing
   let charge = input_capacity - cap
-  let charge_script = Script (contract_info_code_hash $ dapp_contract_info from) [userInfo_blake160 from_user_info]
-  let charge_output = Output (show charge) "0x" charge_script Nothing
+  let charge_script = Script (contract_info_code_hash $ dapp_contract_info from) [userInfo_blake160 from_user_info] "Data"
+  let charge_output = Output (show charge) "0x" charge_script Nothing Nothing
   let outputs = if charge /= 0 then [lock_output, charge_output] else [lock_output]
   let dep = mkDepFormContract $ dapp_contract_info from
   let deps = [dep]

@@ -47,8 +47,8 @@ sumVotes :: [Hash] -> DappInfo -> ContractInfo -> DappInfo -> Arg -> Dapp Resolv
 sumVotes hashes vote_info config_info system_info arg = do
   let inputs = map wrapMkInput hashes
   let deps = [mkDepFormContract $ dapp_contract_info vote_info, mkDepFormContract config_info]
-  let output_script = Script (contract_info_code_hash $ dapp_contract_info system_info) [arg]
-  let outputs = [Output "0" "0x" output_script Nothing]
+  let output_script = Script (contract_info_code_hash $ dapp_contract_info system_info) [arg] "Data"
+  let outputs = [Output "0" "0x" output_script Nothing Nothing]
   let tx = Transaction "0x" "0" deps inputs outputs (fake_witness $ length inputs)
   rtx <- resolveTx LockScriptBinaryVote tx
   let Just lock_func = dapp_lock_func vote_info

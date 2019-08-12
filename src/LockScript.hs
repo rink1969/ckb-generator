@@ -58,7 +58,7 @@ processBinaryVote (ResolvedTransaction tx deps inputs LockScriptBinaryVote) = Re
   output_data = T.unpack $ toText $ fromBinary ((fromIntegral total) :: Word8, (fromIntegral yes) :: Word8)
   output_cap = foldl (+) 0 (map ((read :: String -> Int) . _output_capacity. cell_with_status_cell) inputs)
   output_script = fetchOldOutputScript tx
-  new_output = Output (show output_cap) ("0x" <> output_data) output_script Nothing
+  new_output = Output (show output_cap) ("0x" <> output_data) output_script Nothing Nothing
   new_tx = set transaction_outputs [new_output] tx
 processBinaryVote rtx = rtx
 

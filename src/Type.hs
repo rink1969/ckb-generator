@@ -66,6 +66,7 @@ instance FromJSON Input where
 data Script = Script
   { script_code_hash :: Hash
   , script_args :: [Arg]
+  , script_hash_type :: String
   } deriving (Generic, Show)
 
 instance ToJSON Script where
@@ -82,6 +83,7 @@ data Output = Output
   , _output_data :: Data
   , _output_lock :: Script
   , _output_type :: Maybe Script
+  , _output_out_point :: Maybe OutPoint
   } deriving (Generic, Show)
 
 makeLenses ''Output
