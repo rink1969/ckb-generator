@@ -34,7 +34,7 @@ def send_raw_transaction(transaction)
   while true do
     sleep(3)
     count += 1
-    raise "deploy contract timeout" if count > 20
+    raise "deploy contract timeout" if count > 200
 
     ret = api.get_transaction(tx_hash)
     if ret.tx_status.status == "committed"
@@ -193,7 +193,7 @@ class Client
     while true do
       sleep(3)
       count += 1
-      raise "deploy contract timeout" if count > 20
+      raise "deploy contract timeout" if count > 200
 
       ret = api.get_transaction(tx_hash)
       if ret.tx_status.status == "committed"

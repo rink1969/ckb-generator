@@ -4,4 +4,4 @@ source "https://rubygems.org"
 
 ruby ">= 2.4.0"
 
-gem "ckb-sdk-ruby", git: "https://github.com/nervosnetwork/ckb-sdk-ruby.git", require: "ckb", branch: "rc/v0.16.0"
+gem "ckb-sdk-ruby", git: "https://github.com/nervosnetwork/ckb-sdk-ruby.git", require: "ckb", branch: "rc/v0.18.0"
