@@ -11,6 +11,11 @@ userInfo = do
   key <- ask "privkey"
   getUserInfo key
 
+hdUserInfo :: Dapp UserInfo
+hdUserInfo = do
+  index <- ask "index"
+  getHDUserInfo (read index :: Int)
+
 capacity :: Dapp Int
 capacity = do
   scap <- ask "input capacity"

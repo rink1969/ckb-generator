@@ -67,6 +67,7 @@ Operators列表如下：
 ```haskell
 data Operator next =
   GetUserInfo Key (UserInfo -> next)
+  | GetHDUserInfo Int (UserInfo -> next)
   | LockHash (Hash, [Arg]) (Hash -> next)
   | QueryLiveCells (Hash, Int) (RetQueryLiveCells -> next)
   | GetLiveCellByTxHashIndex (Hash, Index) (CellWithStatus -> next)
@@ -100,7 +101,7 @@ Cell Model从简单操作角度来说，跟UTXO是一致的，都可以类比成
 
 ---
 
-`DeployContract`更多的是用来将一些实现生成好的数据放到链上的一个Cell里。比如Vote里的config data。
+`DeployContract`更多的是用来将一些事先生成好的数据放到链上的一个Cell里。比如Vote里的config data。
 
 Dapp相关的合约其实是由`MkDappInfo`自动生成，编译，然后部署。
 
@@ -115,6 +116,22 @@ Dapp里的合约，是后部署的，会在部署的时候得到Contract相关�
 ---
 
 `Ask`和`Display`是处理用户输入和一些信息的输出。
+
+---
+
+新增加`GetHDUserInfo`。
+
+现有的代码有个问题，就是部署合约是放在当前账户下的，相当于自己给自己转账。
+
+但是因为部署后的合约也是本账户下的一个LiveCell，后续操作的时候可能会把合约选为input消费掉，导致后面的合约调用失败。
+
+这里想到的一个解决方案是使用HD钱包技术，这样一个seed就可以掌控一系列的账户。 
+
+`GetHDUserInfo`的参数是index，即这一系列账户的下标。seed自动创建并保存在`~/.ckb-generator`目录下。
+
+将合约或者投票等里面有不同类型数据的Cell放置到不同的账户里面。
+
+这样就可以避免无意中将还需要保留的LiveCell花费掉。
 
 ### 下层DSL
 
@@ -175,7 +192,7 @@ update：在一个Dapp内部流转。当然具体动作会细分成很多情况�
 
 退出：即transafer，这个就跟业务非常相关了。
 
-这些具体的动作会对应一些列的组件（上层DSL），当然这里面会关联到前面所述的下层DSL的组件。因为价值流转必然会涉及到合约操作。
+这些具体的动作会对应一系列的组件（上层DSL），当然这里面会关联到前面所述的下层DSL的组件。因为价值流转必然会涉及到合约操作。
 
 ### 安全
 

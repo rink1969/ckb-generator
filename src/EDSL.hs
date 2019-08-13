@@ -26,6 +26,7 @@ import Control.Monad.State (execState)
 -- define of DSL
 data Operator next =
   GetUserInfo Key (UserInfo -> next)
+  | GetHDUserInfo Int (UserInfo -> next)
   | LockHash (Hash, [Arg]) (Hash -> next)
   | QueryLiveCells (Hash, Int) (RetQueryLiveCells -> next)
   | GetLiveCellByTxHashIndex (Hash, Index) (CellWithStatus -> next)
@@ -80,6 +81,9 @@ type DappIO = MaybeT IO
 clientInterpreter :: DappOperator (DappIO next) -> DappIO next
 clientInterpreter (GetUserInfo privkey next) = do
   ret <- call_ruby "getUserInfo" [privkey]
+  next ret
+clientInterpreter (GetHDUserInfo index next) = do
+  ret <- call_ruby "getHDUserInfo" [show index]
   next ret
 clientInterpreter (LockHash (code_hash, args) next) = do
   ret <- call_ruby "lockHash" ([code_hash] <> args)
