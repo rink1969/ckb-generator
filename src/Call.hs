@@ -19,7 +19,7 @@ compile_contract target = do
   pwd <- getCurrentDirectory
   elf_path <- elf_abs_path target
   source_path <- source_abs_path target
-  call "riscv64-unknown-elf-gcc" ["-O2", "-mcmodel=medlow", "-DSECP256K1_CUSTOM_FUNCS", "-I", pwd <> "/contract/" <> "deps/flatcc/include", "-I", pwd <> "/contract/" <> "deps/secp256k1/src", "-I", pwd <> "/contract/" <> "deps/secp256k1", "-I", pwd <> "/contract/" <> "header", "-Wall", "-Werror", "-Wno-nonnull-compare", "-Wl,-static", "-fdata-sections", "-ffunction-sections", "-Wl,--gc-sections", "-Wl,-s", "-o", elf_path, source_path]
+  call "riscv64-unknown-elf-gcc" ["-O3", "-mcmodel=medlow", "-DSECP256K1_CUSTOM_FUNCS", "-I", pwd <> "/contract/" <> "deps/molecule", "-I", pwd <> "/contract/" <> "deps/secp256k1/src", "-I", pwd <> "/contract/" <> "deps/secp256k1", "-I", pwd <> "/contract/" <> "header", "-Wall", "-Werror", "-Wno-nonnull-compare", "-Wno-unused-function", "-Wl,-static", "-fdata-sections", "-ffunction-sections", "-Wl,--gc-sections", "-Wl,-s", "-o", elf_path, source_path]
   call "riscv64-unknown-elf-strip" [elf_path]
   return ()
 

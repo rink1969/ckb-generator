@@ -20,7 +20,7 @@ always_success_lock_script = do
 -- dapp always_success
 loop :: DappInfo -> Hash -> Dapp Hash
 loop info prehash = do
-  prehash <- updateCell id info prehash "0"
+  prehash <- updateCell id info prehash "0x0"
   s <- ask "Loop call contract always_sucess!\nPress Enter to continue...Input \"e\" to exit loop..."
   case s of
     "" -> loop info prehash

@@ -22,7 +22,7 @@ static int verify_binary_vote() {
 
     while (1) {
         volatile uint64_t len = TEMP_SIZE;
-        ret = ckb_load_cell_by_field(buf, &len, 0, i, CKB_SOURCE_INPUT, CKB_CELL_FIELD_DATA);
+        ret = ckb_load_cell_data(buf, &len, 0, i, CKB_SOURCE_INPUT);
         if (ret == CKB_INDEX_OUT_OF_BOUND) {
             break;
         }
@@ -39,7 +39,7 @@ static int verify_binary_vote() {
 
     {
         volatile uint64_t len = TEMP_SIZE;
-        if (ckb_load_cell_by_field(buf, &len, 0, 0, CKB_SOURCE_OUTPUT, CKB_CELL_FIELD_DATA) != CKB_SUCCESS) {
+        if (ckb_load_cell_data(buf, &len, 0, 0, CKB_SOURCE_OUTPUT) != CKB_SUCCESS) {
           ckb_debug("BV_LOAD_OUTPUT_DATA_ERROR 43\n");
           return BV_LOAD_OUTPUT_DATA_ERROR;
         }

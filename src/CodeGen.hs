@@ -16,9 +16,9 @@ retDecl = VarDecln Nothing (TypeSpec Int) "ret" (Just $ InitExpr $ LitInt 0)
 includes = unlines [ "#include <script.h>"
                    , "#include \"components/witnessCount.h\""
                    , "#include \"components/binaryVote.h\""
-                   , "#include \"components/hashLock.h\""
+                   , "//#include \"components/hashLock.h\""
                    , "#include \"components/multiSignatures_data_config.h\""
-                   , "#include \"components/multiSignatures_argv.h\""]
+                   , "//#include \"components/multiSignatures_argv.h\""]
 
 genCode expr = includes <> code where
   mainFunc = FunDef (TypeSpec Int) "main" [Param (TypeSpec Int) "argc", Param (Array (Ptr (TypeSpec Char)) Nothing) "argv"] [] [Return $ Just expr]

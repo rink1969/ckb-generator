@@ -27,7 +27,7 @@ import Control.Monad.State (execState)
 data Operator next =
   GetUserInfo Key (UserInfo -> next)
   | GetHDUserInfo Int (UserInfo -> next)
-  | LockHash (Hash, [Arg]) (Hash -> next)
+  | LockHash (Hash, HashType, [Arg]) (Hash -> next)
   | QueryLiveCells (Hash, Int) (RetQueryLiveCells -> next)
   | GetLiveCellByTxHashIndex (Hash, Index) (CellWithStatus -> next)
   | DeployContract (UserInfo, Path) (ContractInfo -> next)
@@ -85,8 +85,8 @@ clientInterpreter (GetUserInfo privkey next) = do
 clientInterpreter (GetHDUserInfo index next) = do
   ret <- call_ruby "getHDUserInfo" [show index]
   next ret
-clientInterpreter (LockHash (code_hash, args) next) = do
-  ret <- call_ruby "lockHash" ([code_hash] <> args)
+clientInterpreter (LockHash (code_hash, hash_type, args) next) = do
+  ret <- call_ruby "lockHash" ([code_hash, hash_type] <> args)
   next ret
 clientInterpreter (QueryLiveCells (lock_hash, capacity) next) = do
   let scapacity = show capacity

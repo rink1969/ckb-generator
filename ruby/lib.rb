@@ -4,23 +4,24 @@ require "ckb"
 
 def getLiveCellByTxHashIndex(tx_hash, index)
   out_point = CKB::Types::OutPoint.new(
-                      cell: CKB::Types::CellOutPoint.new(
-                      tx_hash: tx_hash,
-                      index: index
-                    ))
+                tx_hash: tx_hash,
+                index: index
+              )
   api = CKB::API.new
-  cell_with_status = api.get_live_cell(out_point)
+  cell_with_status = api.get_live_cell(out_point, true)
 end
 
 def system_script
   api = CKB::API.new
-  system_outpoint = api.system_script_out_point
+  system_group_outpoint = api.secp_group_out_point
   {
     name: "system",
     elf_path: "system",
-    code_hash: api.system_script_code_hash,
-    tx_hash: system_outpoint.cell.tx_hash,
-    index: system_outpoint.cell.index
+    code_hash: api.secp_cell_type_hash,
+    hash_type: "type",
+    tx_hash: system_group_outpoint.tx_hash,
+    index: CKB::Utils::to_hex(system_group_outpoint.index),
+    dep_type: "dep_group"
   }
 end
 
@@ -48,10 +49,11 @@ def min_output_capacity
     capacity: 0,
     lock:  CKB::Types::Script.generate_lock(
               "0x0000000000000000000000000000000000000000",
-              "0x0000000000000000000000000000000000000000000000000000000000000000"
+              "0x0000000000000000000000000000000000000000000000000000000000000000",
+              "data"
             )
   )
-  min_output.calculate_min_capacity
+  min_output.calculate_min_capacity("0x")
 end
 
 # @return [CKB::Types::Output[]]
@@ -62,7 +64,7 @@ def get_unspent_cells(lock_hash)
   current_from = 1
   while current_from <= to
     current_to = [current_from + 100, to].min
-    cells = api.get_cells_by_lock_hash(lock_hash, current_from.to_s, current_to.to_s)
+    cells = api.get_cells_by_lock_hash(lock_hash, current_from, current_to)
     results.concat(cells)
     current_from = current_to + 1
   end
@@ -81,7 +83,7 @@ def gather_inputs(lock_hash, capacity, min_capacity)
   get_unspent_cells(lock_hash).each do |cell|
     input = CKB::Types::Input.new(
       previous_output: cell.out_point,
-      since: "0"
+      since: 0
     )
     inputs << input
     input_capacities += cell.capacity.to_i
@@ -134,15 +136,17 @@ class Client
     @key.address.to_s
   end
 
+  # @return [CKB::Types::Script]
   def lock
     CKB::Types::Script.generate_lock(
-      key.address.blake160,
-      api.system_script_code_hash
+      blake160,
+      api.secp_cell_type_hash,
+      "type"
     )
   end
 
   def lock_hash
-    @lock_hash ||= lock.to_hash
+    @lock_hash ||= lock.compute_hash
   end
 
   # for Operators
@@ -155,16 +159,18 @@ class Client
     capacity = code_len * 10 ** 8
     output= CKB::Types::Output.new(
       capacity: capacity,
-      data: "0x#{elf_bin.unpack1('H*')}",
       lock: lock
     )
-    capacity = output.calculate_min_capacity
+    output_data = "0x#{elf_bin.unpack1('H*')}"
+    capacity = output.calculate_min_capacity(output_data)
     output.capacity = capacity
 
-    charge_output = CKB::Types::Output.new(
+    change_output = CKB::Types::Output.new(
       capacity: 0,
       lock: lock
     )
+    change_output_data = "0x"
+
     i = gather_inputs(
       lock_hash,
       capacity,
@@ -173,17 +179,24 @@ class Client
     input_capacities = i.capacities
 
     outputs = [output]
-    charge_output.capacity = input_capacities - capacity
-    outputs << charge_output if charge_output.capacity.to_i > 0
+    outputs_data = [output_data]
+    change_output.capacity = input_capacities - capacity
+    if change_output.capacity.to_i > 0
+      outputs << change_output
+      outputs_data << change_output_data
+    end
 
     tx = CKB::Types::Transaction.new(
       version: 0,
-      deps: [api.system_script_out_point],
+      cell_deps: [
+        CKB::Types::CellDep.new(out_point: api.secp_group_out_point, dep_type: "dep_group")
+      ],
       inputs: i.inputs,
       outputs: outputs,
+      outputs_data: outputs_data,
       witnesses: fake_witnesses(i.inputs.length)
     )
-    tx_hash = api.compute_transaction_hash(tx)
+    tx_hash = tx.compute_hash
 
     tx = tx.sign(key, tx_hash)
     send_raw_transaction(tx)
@@ -200,15 +213,17 @@ class Client
         return {name: contract_name,
                                elf_path: elf_path,
                                code_hash: code_hash,
+                               hash_type: "data",
                                tx_hash: tx_hash,
-                               index: "0"
+                               index: "0x0",
+                               dep_type: "code"
                               }
       end
     end
   end
 
   def sign_transaction(tx)
-    tx_hash = api.compute_transaction_hash(tx)
+    tx_hash = tx.compute_hash
     tx.sign(key, tx_hash)
   end
 

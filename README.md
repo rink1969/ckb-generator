@@ -68,7 +68,7 @@ Operators列表如下：
 data Operator next =
   GetUserInfo Key (UserInfo -> next)
   | GetHDUserInfo Int (UserInfo -> next)
-  | LockHash (Hash, [Arg]) (Hash -> next)
+  | LockHash (Hash, HashType, [Arg]) (Hash -> next)
   | QueryLiveCells (Hash, Int) (RetQueryLiveCells -> next)
   | GetLiveCellByTxHashIndex (Hash, Index) (CellWithStatus -> next)
   | DeployContract (UserInfo, Path) (ContractInfo -> next)
@@ -291,7 +291,7 @@ Deploy contract vote
 Please input privkey:
 <<<user input>>> 0x...
 Begin to vote!
-Empty data means No, otherwise Yse!
+Empty data means No, otherwise Yes!
 Voter1 ready to vote!
 Please input sender user privkey:
 <<<user input>>> 0x...   -- privkey of Voter1

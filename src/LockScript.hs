@@ -18,6 +18,7 @@ import qualified Data.ByteString as BS
 import qualified Data.Text as T
 
 import Control.Lens (set)
+import Text.Printf (printf)
 
 -- define of DSL
 data LockOperator next =
@@ -52,14 +53,15 @@ mkMultiSigConfig path total threshold args =  BS.writeFile path bs where
 
 processBinaryVote :: ResolvedTransaction -> ResolvedTransaction
 processBinaryVote (ResolvedTransaction tx deps inputs LockScriptBinaryVote) = ResolvedTransaction new_tx [] [] LockScriptMultiSig where
-  data_lens = map (length . _output_data. cell_with_status_cell) inputs
+  data_lens = map (length . cell_with_status_cell_data_content . cell_with_status_cell_data . cell_with_status_cell) inputs
   total = length data_lens
   yes = length $ filter (> 2) data_lens
   output_data = T.unpack $ toText $ fromBinary ((fromIntegral total) :: Word8, (fromIntegral yes) :: Word8)
-  output_cap = foldl (+) 0 (map ((read :: String -> Int) . _output_capacity. cell_with_status_cell) inputs)
+  output_cap = foldl (+) 0 (map ((read :: String -> Int) . _output_capacity. cell_with_status_cell_output . cell_with_status_cell) inputs)
   output_script = fetchOldOutputScript tx
-  new_output = Output (show output_cap) ("0x" <> output_data) output_script Nothing Nothing
-  new_tx = set transaction_outputs [new_output] tx
+  new_output = Output (printf "0x%x" output_cap) output_script Nothing Nothing
+  new_output_data = "0x" <> output_data
+  new_tx = set transaction_outputs_data [new_output_data] (set transaction_outputs [new_output] tx)
 processBinaryVote rtx = rtx
 
 processUpdateCell :: ResolvedTransaction -> ResolvedTransaction

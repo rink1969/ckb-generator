@@ -41,15 +41,18 @@ deployConfigData = do
 
 -- dapp vote
 wrapMkInput :: Hash -> Input
-wrapMkInput hash = mkInput hash "0" "0"
+wrapMkInput hash = mkInput hash "0x0" "0x0"
 
 sumVotes :: [Hash] -> DappInfo -> ContractInfo -> DappInfo -> Arg -> Dapp ResolvedTransaction
 sumVotes hashes vote_info config_info system_info arg = do
   let inputs = map wrapMkInput hashes
-  let deps = [mkDepFormContract $ dapp_contract_info vote_info, mkDepFormContract config_info]
-  let output_script = Script (contract_info_code_hash $ dapp_contract_info system_info) [arg] "Data"
-  let outputs = [Output "0" "0x" output_script Nothing Nothing]
-  let tx = Transaction "0x" "0" deps inputs outputs (fake_witness $ length inputs)
+  system_info <- system_script_info
+  let system_dep = mkDepFormContract $ dapp_contract_info system_info
+  let deps = [mkDepFormContract $ dapp_contract_info vote_info, mkDepFormContract config_info, system_dep]
+  let output_script = Script (contract_info_code_hash $ dapp_contract_info system_info) [arg] (contract_info_hash_type $ dapp_contract_info system_info)
+  let outputs = [Output "0" output_script Nothing Nothing]
+  let outputs_data = ["0x"]
+  let tx = Transaction "0x" "0x0" deps [] inputs outputs outputs_data (fake_witness $ length inputs)
   rtx <- resolveTx LockScriptBinaryVote tx
   let Just lock_func = dapp_lock_func vote_info
   return $ lock_func rtx
@@ -62,7 +65,7 @@ vote_dapp = do
   system_info <- system_script_info
   display "Deploy contract vote"
   vote_info <- mkDappInfo (vote_name, Just vote_lock_script)
-  display "Begin to vote!\nEmpty data means No, otherwise Yse!"
+  display "Begin to vote!\nEmpty data means No, otherwise Yes!"
   display "Voter1 ready to vote!"
   vote1_hash <- transferCapacity system_info vote_info
   display "Voter2 ready to vote!"
@@ -71,7 +74,7 @@ vote_dapp = do
   vote3_hash <- transferCapacity system_info vote_info
   display "Voter1 want to modify his vote!"
   new_data <- ask "input new vote data:"
-  vote1_hash <- updateCell (updateOutputData ("0x" <> new_data)) vote_info vote1_hash "0"
+  vote1_hash <- updateCell (\x -> ("0x" <> new_data)) vote_info vote1_hash "0x0"
   display "Gather all vote tx hashes and begin to sum votes!"
   sum_rtx <- sumVotes [vote1_hash, vote2_hash, vote3_hash] vote_info config_info system_info admin
   let sum_tx = _resolved_transaction_tx sum_rtx

@@ -17,27 +17,15 @@ type Index = String
 type Since = String
 type Status = String
 type Version = String
+type HashType = String
+type DepType = String
 
 
 -- data type from ckb
 
-data CellOutPoint = CellOutPoint
-  { cell_outpoint_tx_hash :: Hash
-  , cell_outpoint_index :: Index
-  } deriving (Generic, Show)
-
-instance ToJSON CellOutPoint where
-  toJSON = genericToJSON defaultOptions {
-             fieldLabelModifier = drop $ length "cell_outpoint_" }
-
-instance FromJSON CellOutPoint where
-  parseJSON = genericParseJSON defaultOptions {
-                fieldLabelModifier = drop $ length "cell_outpoint_" }
-
-
 data OutPoint = OutPoint
-  { outpoint_block_hash :: Maybe Hash
-  , outpoint_cell :: Maybe CellOutPoint
+  { outpoint_tx_hash :: Hash
+  , outpoint_index :: Index
   } deriving (Generic, Show)
 
 instance ToJSON OutPoint where
@@ -66,7 +54,7 @@ instance FromJSON Input where
 data Script = Script
   { script_code_hash :: Hash
   , script_args :: [Arg]
-  , script_hash_type :: String
+  , script_hash_type :: String -- "data" or "type"
   } deriving (Generic, Show)
 
 instance ToJSON Script where
@@ -80,7 +68,6 @@ instance FromJSON Script where
 
 data Output = Output
   { _output_capacity :: Capacity
-  , _output_data :: Data
   , _output_lock :: Script
   , _output_type :: Maybe Script
   , _output_out_point :: Maybe OutPoint
@@ -108,14 +95,28 @@ instance FromJSON Witness where
                 fieldLabelModifier = drop $ length "witness_" }
 
 
-type Dep = OutPoint
+data CellDep = CellDep
+  { cell_dep_out_point :: OutPoint
+  , cell_dep_dep_type :: String -- "code" or "dep_group"
+  } deriving (Generic, Show)
+
+instance ToJSON CellDep where
+  toJSON = genericToJSON defaultOptions {
+             fieldLabelModifier = drop $ length "cell_dep_" }
+
+instance FromJSON CellDep where
+  parseJSON = genericParseJSON defaultOptions {
+                fieldLabelModifier = drop $ length "cell_dep_" }
+
 
 data Transaction = Transaction
   { _transaction_hash :: Hash
   , _transaction_version :: Version
-  , _transaction_deps :: [Dep]
+  , _transaction_cell_deps :: [CellDep]
+  , _transaction_header_deps :: [Hash]
   , _transaction_inputs :: [Input]
   , _transaction_outputs :: [Output]
+  , _transaction_outputs_data :: [Data]
   , _transaction_witnesses :: [Witness]
   } deriving (Generic, Show)
 
@@ -149,8 +150,10 @@ data ContractInfo = ContractInfo
   { contract_info_name :: Name
   , contract_info_elf_path :: Path
   , contract_info_code_hash :: Hash
+  , contract_info_hash_type :: HashType
   , contract_info_tx_hash :: Hash
   , contract_info_index :: Index
+  , contract_info_dep_type :: DepType
   } deriving (Generic, Show)
 
 instance ToJSON ContractInfo where
@@ -174,8 +177,34 @@ instance FromJSON RetQueryLiveCells where
   parseJSON = genericParseJSON defaultOptions {
                 fieldLabelModifier = drop $ length "ret_queryLiveCells_" }
 
+data CellWithStatusCellData = CellWithStatusCellData
+  { cell_with_status_cell_data_content :: Data
+  , cell_with_status_cell_data_hash :: Hash
+  } deriving (Generic, Show)
+
+instance ToJSON CellWithStatusCellData where
+  toJSON = genericToJSON defaultOptions {
+             fieldLabelModifier = drop $ length "cell_with_status_cell_data_" }
+
+instance FromJSON CellWithStatusCellData where
+  parseJSON = genericParseJSON defaultOptions {
+                fieldLabelModifier = drop $ length "cell_with_status_cell_data_" }
+
+data CellWithStatusCell = CellWithStatusCell
+  { cell_with_status_cell_output :: Output
+  , cell_with_status_cell_data :: CellWithStatusCellData
+  } deriving (Generic, Show)
+
+instance ToJSON CellWithStatusCell where
+  toJSON = genericToJSON defaultOptions {
+             fieldLabelModifier = drop $ length "cell_with_status_cell_" }
+
+instance FromJSON CellWithStatusCell where
+  parseJSON = genericParseJSON defaultOptions {
+                fieldLabelModifier = drop $ length "cell_with_status_cell_" }
+
 data CellWithStatus = CellWithStatus
-  { cell_with_status_cell :: Output
+  { cell_with_status_cell :: CellWithStatusCell
   , cell_with_status_status :: Status
   } deriving (Generic, Show)
 
@@ -216,22 +245,28 @@ fake_witness n = take n $ repeat $ Witness []
 
 mkInput :: Hash -> Index -> Since -> Input
 mkInput hash index since = let
-  cell_outpoint = CellOutPoint hash index
-  outpoint = OutPoint Nothing (Just cell_outpoint)
+  outpoint = OutPoint hash index
   in Input outpoint since
 
-mkDepFormContract :: ContractInfo -> Dep
+mkDepFormContract :: ContractInfo -> CellDep
 mkDepFormContract info = let
   hash = contract_info_tx_hash info
   index = contract_info_index info
-  cell_outpoint = CellOutPoint hash index
-  in OutPoint Nothing (Just cell_outpoint)
+  outpoint = OutPoint hash index
+  dep_type = contract_info_dep_type info
+  in CellDep outpoint dep_type
 
 outPoint2Tuple :: OutPoint -> (Hash, Index)
 outPoint2Tuple outpoint = let
-  Just cell_outpoint = outpoint_cell outpoint
-  hash = cell_outpoint_tx_hash cell_outpoint
-  index = cell_outpoint_index cell_outpoint
+  hash = outpoint_tx_hash outpoint
+  index = outpoint_index outpoint
+  in (hash, index)
+
+cellDep2Tuple :: CellDep -> (Hash, Index)
+cellDep2Tuple dep = let
+  outpoint = cell_dep_out_point dep
+  hash = outpoint_tx_hash outpoint
+  index = outpoint_index outpoint
   in (hash, index)
 {-
 let wa = [Witness ["1a"], Witness ["2a"], Witness ["3a"]]
@@ -252,9 +287,6 @@ mergeTransactions txs = do
   let tx = head txs
   let stx = set transaction_witnesses witness tx
   stx
-
-updateOutputData :: Data -> Output -> Output
-updateOutputData new_data old_output = set output_data new_data old_output
 
 fetchOldOutputScript :: Transaction -> Script
 fetchOldOutputScript tx = _output_lock old_output where
