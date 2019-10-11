@@ -52,7 +52,7 @@ static int msdc_verify() {
     int ret;
     ckb_debug("Enter msdc_verify\n");
     for (int i = 0; i < msdc_config.total; i++) {
-        ret = verify_sighash_all((char *)msdc_config.blake160s[i], i);
+        ret = verify_sighash_all((const uint8_t *)msdc_config.blake160s[i], i);
         if (ret == CKB_SUCCESS) {
             ok_count += 1;
         }

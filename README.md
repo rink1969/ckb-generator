@@ -72,7 +72,7 @@ data Operator next =
   | QueryLiveCells (Hash, Int) (RetQueryLiveCells -> next)
   | GetLiveCellByTxHashIndex (Hash, Index) (CellWithStatus -> next)
   | DeployContract (UserInfo, Path) (ContractInfo -> next)
-  | Sign (UserInfo, Transaction) ([Witness] -> next)
+  | Sign (UserInfo, Transaction) ([Data] -> next)
   | SystemScript (ContractInfo -> next)
   | SendTransaction (UserInfo, Transaction) (Hash -> next)
   | SendRawTransaction Transaction (Hash -> next)
@@ -244,7 +244,7 @@ Move some capacity from system_script to contract always_sucess!
 Please input sender user privkey:
 <<<user input>>> 0x...
 Please input Arg or Input "e" to end of input
-<<<user input>>> 0x4a88cef22e4e71c48c40da51c1d6bd16daa97aa7
+<<<user input>>> 4a88cef22e4e71c48c40da51c1d6bd16daa97aa7
 Please input Arg or Input "e" to end of input
 <<<user input>>> e
 input capacity
@@ -296,7 +296,7 @@ Voter1 ready to vote!
 Please input sender user privkey:
 <<<user input>>> 0x...   -- privkey of Voter1
 Please input Arg or Input "e" to end of input
-<<<user input>>> 0x4a88cef22e4e71c48c40da51c1d6bd16daa97aa7  -- blake160 of Voter1
+<<<user input>>> 4a88cef22e4e71c48c40da51c1d6bd16daa97aa7  -- blake160 of Voter1
 Please input Arg or Input "e" to end of input
 <<<user input>>> e
 input capacity
@@ -307,7 +307,7 @@ Voter2 ready to vote!
 Please input sender user privkey:
 <<<user input>>> 0x...   -- privkey of Voter2
 Please input Arg or Input "e" to end of input
-<<<user input>>> 0xa47f8029997fcc67aff87384daac404f39e31ceb  -- blake160 of Voter2
+<<<user input>>> a47f8029997fcc67aff87384daac404f39e31ceb  -- blake160 of Voter2
 Please input Arg or Input "e" to end of input
 <<<user input>>> e
 input capacity
@@ -318,7 +318,7 @@ Voter3 ready to vote!
 Please input sender user privkey:
 <<<user input>>> 0x...   -- privkey of Voter3
 Please input Arg or Input "e" to end of input
-<<<user input>>> 0x96f4093cf179aaa369379402d74f70090fae11ec  -- blake160 of Voter3
+<<<user input>>> 96f4093cf179aaa369379402d74f70090fae11ec  -- blake160 of Voter3
 Please input Arg or Input "e" to end of input
 <<<user input>>> e
 input capacity

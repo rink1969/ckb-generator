@@ -10,4 +10,4 @@ tx = CKB::Types::Transaction.from_h(tx_json)
 client = Client.new(privkey)
 stx = client.sign_transaction(tx)
 
-puts stx.witnesses.map(&:to_h).to_json
+puts stx.witnesses.to_json

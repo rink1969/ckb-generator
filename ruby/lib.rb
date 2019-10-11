@@ -110,7 +110,7 @@ end
 def fake_witnesses(n)
   witnesses = []
   n.times do
-    witnesses << CKB::Types::Witness.new(data: [])
+    witnesses << "0x"
   end
   witnesses
 end

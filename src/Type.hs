@@ -53,7 +53,7 @@ instance FromJSON Input where
 
 data Script = Script
   { script_code_hash :: Hash
-  , script_args :: [Arg]
+  , script_args :: Arg
   , script_hash_type :: String -- "data" or "type"
   } deriving (Generic, Show)
 
@@ -70,7 +70,6 @@ data Output = Output
   { _output_capacity :: Capacity
   , _output_lock :: Script
   , _output_type :: Maybe Script
-  , _output_out_point :: Maybe OutPoint
   } deriving (Generic, Show)
 
 makeLenses ''Output
@@ -82,17 +81,6 @@ instance ToJSON Output where
 instance FromJSON Output where
   parseJSON = genericParseJSON defaultOptions {
                 fieldLabelModifier = drop $ length "_output_" }
-
-
-data Witness = Witness  { witness_data :: [Data]}  deriving (Generic, Show)
-
-instance ToJSON Witness where
-  toJSON = genericToJSON defaultOptions {
-             fieldLabelModifier = drop $ length "witness_" }
-
-instance FromJSON Witness where
-  parseJSON = genericParseJSON defaultOptions {
-                fieldLabelModifier = drop $ length "witness_" }
 
 
 data CellDep = CellDep
@@ -117,7 +105,7 @@ data Transaction = Transaction
   , _transaction_inputs :: [Input]
   , _transaction_outputs :: [Output]
   , _transaction_outputs_data :: [Data]
-  , _transaction_witnesses :: [Witness]
+  , _transaction_witnesses :: [Data]
   } deriving (Generic, Show)
 
 makeLenses ''Transaction
@@ -240,8 +228,8 @@ data DappInfo = DappInfo
   }
 
 -- util function
-fake_witness :: Int -> [Witness]
-fake_witness n = take n $ repeat $ Witness []
+fake_witness :: Int -> [Data]
+fake_witness n = take n $ repeat "0x"
 
 mkInput :: Hash -> Index -> Since -> Input
 mkInput hash index since = let
@@ -269,16 +257,16 @@ cellDep2Tuple dep = let
   index = outpoint_index outpoint
   in (hash, index)
 {-
-let wa = [Witness ["1a"], Witness ["2a"], Witness ["3a"]]
-let wb = [Witness ["1b"], Witness ["2b"], Witness ["3b"]]
-let wc = [Witness ["1c"], Witness ["2c"], Witness ["3c"]]
+let wa = ["0x1a", "0x2a", "0x3a"]
+let wb = ["0x1b", "0x2b", "0x3b"]
+let wc = ["0x1c", "0x2c", "0x3c"]
 let all_witness = [wa,wb,wc]
 > mergeWitnesses all_witness
-[Witness {witness_data = ["1a","1b","1c"]},Witness {witness_data = ["2a","2b","2c"]},Witness {witness_data = ["3a","3b","3c"]}]
+["0x1a1b1c", "0x2a2b2c, "0x3a3b3c"]
 -}
-mergeWitnesses :: [[Witness]] -> [Witness]
+mergeWitnesses :: [[Data]] -> [Data]
 mergeWitnesses ([]:_) = []
-mergeWitnesses all = [Witness $ concat $ map witness_data $ map head all] <> mergeWitnesses (map tail all)
+mergeWitnesses all = ["0x" ++ (concat $ map (tail . tail) $ map head all)] <> mergeWitnesses (map tail all)
 
 mergeTransactions :: [Transaction] -> Transaction
 mergeTransactions txs = do

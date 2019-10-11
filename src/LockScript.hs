@@ -59,7 +59,7 @@ processBinaryVote (ResolvedTransaction tx deps inputs LockScriptBinaryVote) = Re
   output_data = T.unpack $ toText $ fromBinary ((fromIntegral total) :: Word8, (fromIntegral yes) :: Word8)
   output_cap = foldl (+) 0 (map ((read :: String -> Int) . _output_capacity. cell_with_status_cell_output . cell_with_status_cell) inputs)
   output_script = fetchOldOutputScript tx
-  new_output = Output (printf "0x%x" output_cap) output_script Nothing Nothing
+  new_output = Output (printf "0x%x" output_cap) output_script Nothing
   new_output_data = "0x" <> output_data
   new_tx = set transaction_outputs_data [new_output_data] (set transaction_outputs [new_output] tx)
 processBinaryVote rtx = rtx
@@ -103,7 +103,7 @@ nopFunc :: (Expr, Int) -> (Expr, Int)
 nopFunc (expr, 0) = (BinaryOp LOr expr nopExpr, initFlag)
 nopFunc (expr, 1) = (BinaryOp LAnd expr nopExpr, initFlag)
 
-updateCellExpr = Funcall (Ident "verify_sighash_all") [Index (Ident "argv") (LitInt 1), LitInt 0]
+updateCellExpr = Funcall (Ident "verify_sighash_all") [Funcall (Ident "get_arg") [], LitInt 0]
 updataCellFunc :: (Expr, Int) -> (Expr, Int)
 updataCellFunc (expr, 0) = (BinaryOp LOr expr updateCellExpr, initFlag)
 updataCellFunc (expr, 1) = (BinaryOp LAnd expr updateCellExpr, initFlag)

@@ -46,19 +46,19 @@ resolveTx cmd tx = do
   resolved_inputs <- mapM (getLiveCellByTxHashIndex . outPoint2Tuple . input_previous_output) inputs
   return $ ResolvedTransaction tx resolved_deps resolved_inputs cmd
 
-gatherArgs :: [Hash] -> Dapp [Hash]
+gatherArgs :: Data -> Dapp Data
 gatherArgs init_args = do
   s <- ask "Please input Arg or Input \"e\" to end of input"
   case s of
     "e" -> return init_args
-    arg -> gatherArgs (init_args ++ [arg])
+    arg -> gatherArgs (init_args ++ arg)
 
 
 transferCapacity :: DappInfo -> DappInfo -> Dapp Hash
 transferCapacity from to = do
   key <- ask "Please input sender user privkey:"
   from_user_info <- getUserInfo key
-  args <- gatherArgs []
+  args <- gatherArgs "0x"
   cap <- capacity
   output_data <- ask "data in output"
   ret <- query from from_user_info cap
@@ -66,11 +66,11 @@ transferCapacity from to = do
   let input_capacity = read input_capacity_s :: Int
   let inputs = ret_queryLiveCells_inputs ret
   let script = Script (contract_info_code_hash $ dapp_contract_info to) args (contract_info_hash_type $ dapp_contract_info to)
-  let lock_output = Output (printf "0x%x" cap) script Nothing Nothing
+  let lock_output = Output (printf "0x%x" cap) script Nothing
 
   let charge = input_capacity - cap
-  let charge_script = Script (contract_info_code_hash $ dapp_contract_info from) [userInfo_blake160 from_user_info] (contract_info_hash_type $ dapp_contract_info from)
-  let charge_output = Output (printf "0x%x" charge) charge_script Nothing Nothing
+  let charge_script = Script (contract_info_code_hash $ dapp_contract_info from) (userInfo_blake160 from_user_info) (contract_info_hash_type $ dapp_contract_info from)
+  let charge_output = Output (printf "0x%x" charge) charge_script Nothing
   let outputs = if charge /= 0 then [lock_output, charge_output] else [lock_output]
   let outputs_data = if charge /= 0 then ["0x" <> output_data, "0x"] else ["0x" <> output_data]
   let dep = mkDepFormContract $ dapp_contract_info from

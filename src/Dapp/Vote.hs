@@ -49,8 +49,8 @@ sumVotes hashes vote_info config_info system_info arg = do
   system_info <- system_script_info
   let system_dep = mkDepFormContract $ dapp_contract_info system_info
   let deps = [mkDepFormContract $ dapp_contract_info vote_info, mkDepFormContract config_info, system_dep]
-  let output_script = Script (contract_info_code_hash $ dapp_contract_info system_info) [arg] (contract_info_hash_type $ dapp_contract_info system_info)
-  let outputs = [Output "0" output_script Nothing Nothing]
+  let output_script = Script (contract_info_code_hash $ dapp_contract_info system_info) arg (contract_info_hash_type $ dapp_contract_info system_info)
+  let outputs = [Output "0" output_script Nothing]
   let outputs_data = ["0x"]
   let tx = Transaction "0x" "0x0" deps [] inputs outputs outputs_data (fake_witness $ length inputs)
   rtx <- resolveTx LockScriptBinaryVote tx

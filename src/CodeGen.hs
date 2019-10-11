@@ -14,14 +14,14 @@ initFlag = 1 :: Int;
 
 retDecl = VarDecln Nothing (TypeSpec Int) "ret" (Just $ InitExpr $ LitInt 0)
 includes = unlines [ "#include <script.h>"
-                   , "#include \"components/witnessCount.h\""
+                   , "#include \"components/getArg.h\""
                    , "#include \"components/binaryVote.h\""
                    , "//#include \"components/hashLock.h\""
                    , "#include \"components/multiSignatures_data_config.h\""
                    , "//#include \"components/multiSignatures_argv.h\""]
 
 genCode expr = includes <> code where
-  mainFunc = FunDef (TypeSpec Int) "main" [Param (TypeSpec Int) "argc", Param (Array (Ptr (TypeSpec Char)) Nothing) "argv"] [] [Return $ Just expr]
+  mainFunc = FunDef (TypeSpec Int) "main" [] [] [Return $ Just expr]
   code = render $ pretty $ translate $ TransUnit [] [mainFunc]
 
-testGenCode = genCode (BinaryOp LOr (Funcall (Ident "verify_sighash_all") [Index (Ident "argv") (LitInt 0), LitInt 0]) (LitInt 0))
+testGenCode = genCode (BinaryOp LOr (Funcall (Ident "verify_sighash_all") [Funcall (Ident "get_arg") [], LitInt 0]) (LitInt 0))

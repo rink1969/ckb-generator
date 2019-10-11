@@ -27,6 +27,8 @@
 #define RECID_INDEX 64
 /* 32 KB */
 #define WITNESS_SIZE 32768
+#define SCRIPT_SIZE 32768
+#define SIGNATURE_SIZE 65
 
 /*
  * Arguments are listed in the following order:
@@ -42,19 +44,15 @@
  * must be equals to the threshold if the lock is a multisig lock, otherwise must
  * use only 1 signature.
  */
-static int verify_sighash_all(char* blake160, size_t n)
+static int verify_sighash_all(const uint8_t* blake160, size_t n)
 {
   int ret;
-  int recid;
   size_t index = 0;
   volatile uint64_t len = 0;
   unsigned char tx_hash[BLAKE2B_BLOCK_SIZE];
   unsigned char temp[TEMP_SIZE];
   unsigned char witness[WITNESS_SIZE];
   uint8_t secp_data[CKB_SECP256K1_DATA_SIZE];
-  mol_pos_t witness_pos;
-  mol_read_res_t arg_res;
-  mol_read_res_t bytes_res;
 
   ckb_debug("Enter verify_sighash_all\n");
   secp256k1_context context;
@@ -93,7 +91,7 @@ static int verify_sighash_all(char* blake160, size_t n)
 
     /* Now we load actual witness data using the same input index above. */
     len = WITNESS_SIZE;
-    ret = ckb_load_witness(witness, &len, 0, index, CKB_SOURCE_INPUT);
+    ret = ckb_load_witness(witness, &len, 0, index, CKB_SOURCE_GROUP_INPUT);
     if (ret != CKB_SUCCESS) {
       ckb_debug("ERROR_SYSCALL 98\n");
       return ERROR_SYSCALL;
@@ -103,32 +101,10 @@ static int verify_sighash_all(char* blake160, size_t n)
       return ERROR_WITNESS_TOO_LONG;
     }
 
-    witness_pos.ptr = (const uint8_t*)witness;
-    witness_pos.size = len;
-
-
-      /* Load signature */
-      arg_res = mol_cut(&witness_pos, MOL_Witness(n));
-      if (arg_res.code != 0) {
-        ckb_debug("ERROR_ENCODING 113\n");
-        return ERROR_ENCODING;
-      }
-
-      bytes_res = mol_cut_bytes(&arg_res.pos);
-      if (bytes_res.code != 0) {
-        ckb_debug("ERROR_ENCODING 119\n");
-        return ERROR_ENCODING;
-      } else if (bytes_res.pos.size < 65) {
-        ckb_debug("ERROR_ENCODING 122\n");
-        return ERROR_ENCODING;
-      }
-
-      /* The 65th byte is recid according to contract spec.*/
-      recid = bytes_res.pos.ptr[RECID_INDEX];
       /* Recover pubkey */
       secp256k1_ecdsa_recoverable_signature signature;
       if (secp256k1_ecdsa_recoverable_signature_parse_compact(
-              &context, &signature, bytes_res.pos.ptr, recid) == 0) {
+              &context, &signature, &witness[n * SIGNATURE_SIZE], witness[n * SIGNATURE_SIZE + RECID_INDEX]) == 0) {
         ckb_debug("ERROR_SECP_PARSE_SIGNATURE 132\n");
         return ERROR_SECP_PARSE_SIGNATURE;
       }

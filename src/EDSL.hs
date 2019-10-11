@@ -31,7 +31,7 @@ data Operator next =
   | QueryLiveCells (Hash, Int) (RetQueryLiveCells -> next)
   | GetLiveCellByTxHashIndex (Hash, Index) (CellWithStatus -> next)
   | DeployContract (UserInfo, Path) (ContractInfo -> next)
-  | Sign (UserInfo, Transaction) ([Witness] -> next)
+  | Sign (UserInfo, Transaction) ([Data] -> next)
   | SystemScript (ContractInfo -> next)
   | SendTransaction (UserInfo, Transaction) (Hash -> next)
   | SendRawTransaction Transaction (Hash -> next)
