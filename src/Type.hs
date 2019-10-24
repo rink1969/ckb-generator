@@ -5,6 +5,7 @@ module Type where
 import GHC.Generics (Generic)
 import Data.Aeson (FromJSON, ToJSON, fieldLabelModifier, parseJSON, toJSON, defaultOptions, genericParseJSON, genericToJSON)
 import Control.Lens (makeLenses, set)
+import Text.Printf (printf)
 
 type Path = String
 type Hash = String
@@ -20,6 +21,7 @@ type Version = String
 type HashType = String
 type DepType = String
 
+minFee = 1000 * 2048 :: Integer
 
 -- data type from ckb
 
@@ -279,3 +281,33 @@ mergeTransactions txs = do
 fetchOldOutputScript :: Transaction -> Script
 fetchOldOutputScript tx = _output_lock old_output where
   old_output = (_transaction_outputs tx) !! 0
+
+
+hexChar :: Char -> Integer
+hexChar ch
+    | ch == '0' = 0
+    | ch == '1' = 1
+    | ch == '2' = 2
+    | ch == '3' = 3
+    | ch == '4' = 4
+    | ch == '5' = 5
+    | ch == '6' = 6
+    | ch == '7' = 7
+    | ch == '8' = 8
+    | ch == '9' = 9
+    | ch == 'a' = 10
+    | ch == 'b' = 11
+    | ch == 'c' = 12
+    | ch == 'd' = 13
+    | ch == 'e' = 14
+    | ch == 'f' = 15
+    | otherwise     = 0
+
+parseHex :: String -> Integer
+parseHex hxStr = go (reverse hxStr)
+    where go []     = 0
+          go (x:xs) = hexChar x + 16 * go xs
+
+reduceFee :: Output -> Output
+reduceFee output = set output_capacity (printf "0x%x" new_capacity) output
+  where new_capacity = parseHex (tail $ tail (_output_capacity output)) - minFee

@@ -17,13 +17,13 @@ hdUserInfo = do
   index <- ask "index"
   getHDUserInfo (read index :: Int)
 
-capacity :: Dapp Int
+capacity :: Dapp Integer
 capacity = do
   scap <- ask "input capacity"
-  let cap = read scap :: Int
+  let cap = read scap :: Integer
   return cap
 
-query :: DappInfo -> UserInfo -> Int -> Dapp RetQueryLiveCells
+query :: DappInfo -> UserInfo -> Integer -> Dapp RetQueryLiveCells
 query dapp_info user_info cap = do
   let code_hash = contract_info_code_hash $ dapp_contract_info dapp_info
   let hash_type = contract_info_hash_type $ dapp_contract_info dapp_info
@@ -63,12 +63,12 @@ transferCapacity from to = do
   output_data <- ask "data in output"
   ret <- query from from_user_info cap
   let input_capacity_s = ret_queryLiveCells_capacity ret
-  let input_capacity = read input_capacity_s :: Int
+  let input_capacity = read input_capacity_s :: Integer
   let inputs = ret_queryLiveCells_inputs ret
   let script = Script (contract_info_code_hash $ dapp_contract_info to) args (contract_info_hash_type $ dapp_contract_info to)
   let lock_output = Output (printf "0x%x" cap) script Nothing
 
-  let charge = input_capacity - cap
+  let charge = input_capacity - cap - minFee
   let charge_script = Script (contract_info_code_hash $ dapp_contract_info from) (userInfo_blake160 from_user_info) (contract_info_hash_type $ dapp_contract_info from)
   let charge_output = Output (printf "0x%x" charge) charge_script Nothing
   let outputs = if charge /= 0 then [lock_output, charge_output] else [lock_output]
@@ -92,6 +92,7 @@ updateCell :: (Data -> Data) ->  DappInfo-> Hash -> Index -> Dapp Hash
 updateCell func info hash index = do
   c <- getLiveCellByTxHashIndex (hash, index)
   let output = cell_with_status_cell_output $ cell_with_status_cell c
+  let new_output = reduceFee output
   let output_data =  cell_with_status_cell_data_content $ cell_with_status_cell_data $ cell_with_status_cell c
   let new_output_data = func output_data
   let input = mkInput hash index "0x0"
@@ -100,7 +101,7 @@ updateCell func info hash index = do
   let dep = mkDepFormContract $ dapp_contract_info info
   let deps = [dep, system_dep]
   let inputs = [input]
-  let outputs = [output]
+  let outputs = [new_output]
   let outputs_data = [new_output_data]
   let tx = Transaction "0x" "0x0" deps [] inputs outputs outputs_data (fake_witness $ length inputs)
   let maybe_lock_func = dapp_lock_func info

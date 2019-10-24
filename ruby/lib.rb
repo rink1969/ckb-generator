@@ -2,6 +2,8 @@ require 'rubygems'
 require 'bundler/setup'
 require "ckb"
 
+MIN_FEE = 1000 * 2048
+
 def getLiveCellByTxHashIndex(tx_hash, index)
   out_point = CKB::Types::OutPoint.new(
                 tx_hash: tx_hash,
@@ -88,7 +90,7 @@ def gather_inputs(lock_hash, capacity, min_capacity)
     inputs << input
     input_capacities += cell.capacity.to_i
 
-    diff = input_capacities - capacity
+    diff = input_capacities - capacity - MIN_FEE
     break if diff >= min_capacity || diff.zero?
   end
 
@@ -180,7 +182,7 @@ class Client
 
     outputs = [output]
     outputs_data = [output_data]
-    change_output.capacity = input_capacities - capacity
+    change_output.capacity = input_capacities - capacity - MIN_FEE
     if change_output.capacity.to_i > 0
       outputs << change_output
       outputs_data << change_output_data

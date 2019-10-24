@@ -28,7 +28,7 @@ data Operator next =
   GetUserInfo Key (UserInfo -> next)
   | GetHDUserInfo Int (UserInfo -> next)
   | LockHash (Hash, HashType, [Arg]) (Hash -> next)
-  | QueryLiveCells (Hash, Int) (RetQueryLiveCells -> next)
+  | QueryLiveCells (Hash, Integer) (RetQueryLiveCells -> next)
   | GetLiveCellByTxHashIndex (Hash, Index) (CellWithStatus -> next)
   | DeployContract (UserInfo, Path) (ContractInfo -> next)
   | Sign (UserInfo, Transaction) ([Data] -> next)
