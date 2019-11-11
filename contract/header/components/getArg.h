@@ -7,29 +7,34 @@ unsigned char g_script[SCRIPT_SIZE];
 
 static const uint8_t* get_arg() {
   int ret;
-  volatile uint64_t len = 0;
-  mol_pos_t script_pos;
-  mol_read_res_t args_res;
-  mol_read_res_t bytes_res;
+  uint64_t len = 0;
+
+  ckb_debug("Enter get_arg\n");
 
   /* Load args */
   len = SCRIPT_SIZE;
   ret = ckb_load_script(g_script, &len, 0);
   if (ret != CKB_SUCCESS) {
+    ckb_debug("error 16\n");
     return NULL;
   }
-  script_pos.ptr = (const uint8_t*)g_script;
-  script_pos.size = len;
-  args_res = mol_cut(&script_pos, MOL_Script_args());
-  if (args_res.code != 0) {
+
+  mol_seg_t script_seg;
+  script_seg.ptr = (uint8_t *)g_script;
+  script_seg.size = len;
+
+  if (MolReader_Script_verify(&script_seg, false) != MOL_OK) {
+    ckb_debug("error 27\n");
     return NULL;
   }
-  bytes_res = mol_cut_bytes(&args_res.pos);
-  if (bytes_res.code != 0) {
-    return NULL;
-  } else if (bytes_res.pos.size == 0) {
+
+  mol_seg_t args_seg = MolReader_Script_get_args(&script_seg);
+  mol_seg_t args_bytes_seg = MolReader_Bytes_raw_bytes(&args_seg);
+  if (args_bytes_seg.size != BLAKE160_SIZE) {
+    ckb_debug("error 34\n");
     return NULL;
   }
-  return bytes_res.pos.ptr;
+
+  return args_bytes_seg.ptr;
 }
 #endif

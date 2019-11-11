@@ -3,22 +3,9 @@
 
 #include "blake2b.h"
 #include "ckb_syscalls.h"
-#include "protocol_reader.h"
+#include "common.h"
+#include "protocol.h"
 #include "secp256k1_helper.h"
-
-#define ERROR_UNKNOWN -1
-#define ERROR_WRONG_NUMBER_OF_ARGUMENTS -2
-#define ERROR_PUBKEY_BLAKE160_HASH -3
-#define ERROR_SYSCALL -4
-#define ERROR_SECP_ABORT -5
-#define ERROR_SECP_INITIALIZE -6
-#define ERROR_SECP_RECOVER_PUBKEY -7
-#define ERROR_SECP_PARSE_SIGNATURE -8
-#define ERROR_SECP_SERIALIZE_PUBKEY -9
-#define ERROR_BUFFER_NOT_ENOUGH -10
-#define ERROR_ENCODING -11
-#define ERROR_WITNESS_TOO_LONG -12
-#define ERROR_INVALID_THRESHOLD -13
 
 #define BLAKE2B_BLOCK_SIZE 32
 #define BLAKE160_SIZE 20
@@ -48,7 +35,7 @@ static int verify_sighash_all(const uint8_t* blake160, size_t n)
 {
   int ret;
   size_t index = 0;
-  volatile uint64_t len = 0;
+  uint64_t len = 0;
   unsigned char tx_hash[BLAKE2B_BLOCK_SIZE];
   unsigned char temp[TEMP_SIZE];
   unsigned char witness[WITNESS_SIZE];
@@ -97,8 +84,8 @@ static int verify_sighash_all(const uint8_t* blake160, size_t n)
       return ERROR_SYSCALL;
     }
     if (len > WITNESS_SIZE) {
-      ckb_debug("ERROR_WITNESS_TOO_LONG 102\n");
-      return ERROR_WITNESS_TOO_LONG;
+      ckb_debug("ERROR_WITNESS_SIZE 102\n");
+      return ERROR_WITNESS_SIZE;
     }
 
       /* Recover pubkey */
@@ -140,7 +127,7 @@ static int verify_sighash_all(const uint8_t* blake160, size_t n)
       }
     index += 1;
   }
-  ckb_debug("ERROR_UNKNOWN 167\n");
-  return ERROR_UNKNOWN;
+  ckb_debug("ERROR_ENCODING 167\n");
+  return ERROR_ENCODING;
 }
 #endif

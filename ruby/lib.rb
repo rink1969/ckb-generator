@@ -112,7 +112,7 @@ end
 def fake_witnesses(n)
   witnesses = []
   n.times do
-    witnesses << "0x"
+    witnesses << CKB::Types::Witness.new
   end
   witnesses
 end
@@ -198,9 +198,8 @@ class Client
       outputs_data: outputs_data,
       witnesses: fake_witnesses(i.inputs.length)
     )
-    tx_hash = tx.compute_hash
 
-    tx = tx.sign(key, tx_hash)
+    tx = tx.sign(key)
     send_raw_transaction(tx)
 
     # wait for tx committed
@@ -210,13 +209,13 @@ class Client
       count += 1
       raise "deploy contract timeout" if count > 200
 
-      ret = api.get_transaction(tx_hash)
+      ret = api.get_transaction(tx.hash)
       if ret.tx_status.status == "committed"
         return {name: contract_name,
                                elf_path: elf_path,
                                code_hash: code_hash,
                                hash_type: "data",
-                               tx_hash: tx_hash,
+                               tx_hash: tx.hash,
                                index: "0x0",
                                dep_type: "code"
                               }
@@ -225,8 +224,17 @@ class Client
   end
 
   def sign_transaction(tx)
-    tx_hash = tx.compute_hash
-    tx.sign(key, tx_hash)
+    tx.sign(key)
+  end
+
+  def simple_sign_transaction(tx)
+    stx = sign_transaction(tx)
+    tx_hash = stx.hash
+
+    blake2b = CKB::Blake2b.new
+    blake2b.update(CKB::Utils.hex_to_bin(tx_hash))
+    message = blake2b.hexdigest
+    key.sign_recoverable(message)
   end
 
   # send transaction which unsigned

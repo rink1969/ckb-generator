@@ -24,7 +24,7 @@ static int msdc_parse_config() {
     char buf[MSDC_TEMP_SIZE];
     ckb_debug("Enter msdc_parse_config\n");
     {
-        volatile uint64_t len = MSDC_TEMP_SIZE;
+        uint64_t len = MSDC_TEMP_SIZE;
         if (ckb_load_cell_data(buf, &len, 0, 1, CKB_SOURCE_CELL_DEP) != CKB_SUCCESS) {
             ckb_debug("MSDC_LOAD_DATA_ERROR 29\n");
             return MSDC_LOAD_DATA_ERROR;

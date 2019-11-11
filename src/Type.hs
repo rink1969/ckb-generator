@@ -268,7 +268,7 @@ let all_witness = [wa,wb,wc]
 -}
 mergeWitnesses :: [[Data]] -> [Data]
 mergeWitnesses ([]:_) = []
-mergeWitnesses all = ["0x" ++ (concat $ map (tail . tail) $ map head all)] <> mergeWitnesses (map tail all)
+mergeWitnesses all = ["0x" ++ (concat $ map (drop 2) $ map head all)] <> mergeWitnesses (map tail all)
 
 mergeTransactions :: [Transaction] -> Transaction
 mergeTransactions txs = do

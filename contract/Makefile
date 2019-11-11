@@ -3,8 +3,7 @@ CC := $(TARGET)-gcc
 LD := $(TARGET)-gcc
 CFLAGS := -O3 -Ideps/molecule -I deps/secp256k1/src -I deps/secp256k1 -I header -Wall -Werror -Wno-nonnull-compare -Wno-unused-function
 LDFLAGS := -Wl,-static -fdata-sections -ffunction-sections -Wl,--gc-sections -Wl,-s
-SECP256K1_LIB := deps/secp256k1/.libs/libsecp256k1.a
-FLATCC := deps/flatcc/bin/flatcc
+SECP256K1_SRC := deps/secp256k1/src/ecmult_static_pre_context.h
 
 all: vote always_success
 
