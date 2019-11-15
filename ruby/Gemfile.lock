@@ -1,9 +1,9 @@
 GIT
   remote: https://github.com/nervosnetwork/ckb-sdk-ruby.git
-  revision: 913184d6f9700790d0bbfd591b714505fa333a6d
-  tag: v0.24.0
+  revision: 8e4fdacd445677ada99230419e8675867cf8873c
+  branch: rc/v0.25.0
   specs:
-    ckb-sdk-ruby (0.24.0)
+    ckb-sdk-ruby (0.25.0)
       bitcoin-secp256k1 (~> 0.5.2)
       net-http-persistent (~> 3.0.0)
       rbnacl (~> 6.0, >= 6.0.1)

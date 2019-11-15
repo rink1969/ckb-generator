@@ -131,11 +131,11 @@ class Client
   end
 
   def blake160
-    @key.address.blake160
+    CKB::Key.blake160(pubkey())
   end
 
   def address
-    @key.address.to_s
+    CKB::Address.new(lock(), mode: CKB::MODE::TESTNET)
   end
 
   # @return [CKB::Types::Script]
